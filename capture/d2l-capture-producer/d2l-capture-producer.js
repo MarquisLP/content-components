@@ -19,6 +19,8 @@ import { Timeline } from './src/timeline';
 class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
 		return {
+			captions: { type: Array },
+			captionsLoading: { type: Boolean },
 			defaultLanguage: { type: Object },
 			metadata: { type: Object },
 			selectedLanguage: { type: Object },
@@ -116,6 +118,8 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		this._draggingMark = false;
 		this._currentMark = null;
 
+		this.captions = [];
+
 		this.metadata = { cuts: [], chapters: [] };
 		this.src = '';
 		this.selectedLanguage = {};
@@ -180,7 +184,10 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 							text=${this.localize('closedCaptions')}
 						>
 							<d2l-video-producer-captions
+								.captions="${this.captions}"
+								@captions-changed=${this._handleCaptionsChanged}
 								.defaultLanguage="${this.defaultLanguage}"
+								?loading="${this.captionsLoading}"
 								.selectedLanguage="${this.selectedLanguage}"
 							></d2l-video-producer-captions>
 						</d2l-tab-panel>
@@ -468,6 +475,16 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	}
 
 	//#endregion
+	_fireCaptionsChangedEvent(detail) {
+		this.dispatchEvent(new CustomEvent(
+			'captions-changed',
+			{
+				composed: false,
+				detail
+			}
+		));
+	}
+
 	_fireMetadataChangedEvent({ cuts = this._timeline.getCuts(), chapters = this.metadata.chapters } = {}) {
 		this.dispatchEvent(new CustomEvent(
 			'metadata-changed',
@@ -708,6 +725,10 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	}
 
 	//#endregion
+	_handleCaptionsChanged(e) {
+		this._fireCaptionsChangedEvent(e.detail);
+	}
+
 	_handleChaptersChanged(e) {
 		this._fireMetadataChangedEvent({ chapters: e.detail.chapters });
 	}
@@ -736,6 +757,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	get _loading() {
 		return !(
 			this.metadata
+			&& this.captions
 			&& this._videoLoaded
 			&& this.selectedLanguage
 			&& this.selectedLanguage.code

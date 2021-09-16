@@ -61,6 +61,26 @@ export default class ContentServiceClient {
 		return `Content Service Client: ${this.endpoint}`;
 	}
 
+	async getCaptions({ contentId, revisionId, locale, draft = false }) {
+		const headers = new Headers();
+		headers.append('pragma', 'no-cache');
+		headers.append('cache-control', 'no-cache');
+
+		try {
+			const response = await this._fetch({
+				path: `/api/${this.tenantId}/content/${contentId}/revisions/${revisionId}/captions/${locale}`,
+				query: { draft, json: true },
+				headers
+			});
+			return response;
+		} catch (error) {
+			if (error.message === 'Not Found') {
+				return { cues: [] };
+			}
+			throw error;
+		}
+	}
+
 	getContent(id) {
 		return this._fetch({
 			path: `/api/${this.tenantId}/content/${id}`

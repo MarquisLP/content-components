@@ -63,6 +63,7 @@ export const val = {
 	layoutSettings: 'Layout Settings',
 	liveEvents: 'Live Events',
 	liveEventSettings: 'Live Event Settings',
+	loadCaptionsError: 'An error occurred while loading captions for {language}',
 	loadMore: 'Load More',
 	manageClips: 'Manage Clips',
 	manageFolders: 'Manage Folders',
