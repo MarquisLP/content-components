@@ -21,6 +21,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 	static get properties() {
 		return {
 			_alertMessage: { type: String, attribute: false },
+			_captions: { type: Object, attribute: false },
 			_content: { type: String, attribute: false },
 			_defaultLanguage: { type: String, attribute: false },
 			_errorOccurred: { type: Boolean, attribute: false },
@@ -86,6 +87,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 	constructor() {
 		super();
 		this._alertMessage = '';
+		this._captions = '';
 		this._errorOccurred = false;
 		this._revisionIndexToLoad = 0;
 		this._selectedRevisionIndex = 0;
@@ -106,7 +108,8 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 					this._revisionsLatestToOldest = this._content.revisions.slice().reverse();
 				}
 				this._sourceUrl = (await this.apiClient.getSignedUrl(this.rootStore.routingStore.params.id)).value;
-				this._setupLanguages();
+				await this._setupLanguages();
+				this._loadCaptions('latest', this._selectedLanguage.code);
 				this._metadata = await this.apiClient.getMetadata({
 					contentId: this._content.id,
 					revisionId: 'latest',
@@ -167,6 +170,8 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 				</div>
 
 				<d2l-capture-producer
+					.captions="${this._captions}"
+					@captions-changed="${this._handleCaptionsChanged}"
 					.defaultLanguage="${this._defaultLanguage}"
 					.metadata="${this._metadata}"
 					.selectedLanguage="${this._selectedLanguage}"
@@ -203,6 +208,10 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 
 	get producer() {
 		return this.shadowRoot.querySelector('d2l-labs-video-producer');
+	}
+
+	_handleCaptionsChanged(event) {
+		this._captions = event.detail.captions;
 	}
 
 	async _handleFinish() {
@@ -286,6 +295,23 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 			this.shadowRoot.querySelector('.d2l-capture-central-producer-dialog-confirm-revision-change').open();
 		} else {
 			this._loadNewlySelectedRevision();
+		}
+	}
+
+	async _loadCaptions(revision, locale) {
+		try {
+			const response = await this.apiClient.getCaptions({
+				contentId: this._content.id,
+				revisionId: revision,
+				locale,
+				draft: true,
+			});
+			this._captions = await response.text();
+		} catch (error) {
+			const language = this._languages.find(lang => lang.code === locale);
+			this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
+			this.shadowRoot.querySelector('d2l-alert-toast').open = true;
+			return;
 		}
 	}
 

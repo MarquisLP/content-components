@@ -29,5 +29,6 @@ export const val = {
 	tableOfContents: 'Table of Contents',
 	timeToSeekPosition: 'Set time to seek position',
 	uploadSrtWebVttFile: 'Upload an SRT or WebVTT file',
+	vttLibraryError: 'The WebVTT parser could not be loaded. Please try again later.',
 	vttParseError: 'Could not parse WebVTT file. Please ensure your file follows the WebVTT file format.',
 };

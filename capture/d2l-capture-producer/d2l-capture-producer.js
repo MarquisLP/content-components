@@ -19,6 +19,7 @@ import { Timeline } from './src/timeline';
 class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
 		return {
+			captions: { type: String },
 			defaultLanguage: { type: Object },
 			metadata: { type: Object },
 			selectedLanguage: { type: Object },
@@ -116,6 +117,8 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		this._draggingMark = false;
 		this._currentMark = null;
 
+		this.captions = '';
+
 		this.metadata = { cuts: [], chapters: [] };
 		this.src = '';
 		this.selectedLanguage = {};
@@ -179,7 +182,9 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 							no-padding
 							text=${this.localize('closedCaptions')}
 						>
+							${this._appendVttScript()}
 							<d2l-video-producer-captions
+								.captions="${this.captions}"
 								.defaultLanguage="${this.defaultLanguage}"
 								.selectedLanguage="${this.selectedLanguage}"
 							></d2l-video-producer-captions>
@@ -298,6 +303,20 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	//#region Chapter management
 	_addNewChapter() {
 		this._chapters.addNewChapter(this._video.currentTime);
+	}
+
+	// <script> tags must be added via Javascript in LitElement.
+	// https://stackoverflow.com/a/55693185
+	_appendVttScript() {
+		// Using a relative path (e.g. './scripts/vtt.min.js') in the <script> tag
+		// won't work because the script is on a separate domain from the LMS page.
+		// So we need to construct the absolute URL to the vtt script.
+		const urlOfThisFile = new URL(import.meta.url);
+		const vttScriptUrlPrefix = urlOfThisFile.href.slice(0, urlOfThisFile.href.indexOf('d2l-capture-producer.js'));
+
+		const script = document.createElement('script');
+		script.src = `${vttScriptUrlPrefix}scripts/vtt.min.js`;
+		return script;
 	}
 
 	//#region Control mode management

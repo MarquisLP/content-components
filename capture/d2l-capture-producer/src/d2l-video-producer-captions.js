@@ -192,8 +192,11 @@ customElements.define('d2l-video-producer-captions-cues-list-item', CaptionsCueL
 class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
-			captionCues: { type: Object },
-			visibleCuesInList: { type: Object },
+			captions: { type: String },
+			captionCues: { type: Object, attribute: false },
+			defaultLanguage: { type: Object },
+			selectedLanguage: { type: Object },
+			visibleCuesInList: { type: Object, attribute: false },
 		};
 	}
 
@@ -257,41 +260,59 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 					id="d2l-video-producer-captions-alert-toast"
 				></d2l-alert-toast>
 			</div>
-			${this._appendVttScript()}
 		`;
 	}
 
 	updated(changedProperties) {
 		changedProperties.forEach((oldValue, propName) => {
+			if (propName === 'captions' && this.captionsText !== '') {
+				this._convertCaptionsTextToCues();
+			}
 			if (propName === 'captionCues') {
-				if (oldValue && oldValue.length === 0 && this.captionCues.length > 0) {
-					const options = {
-						root: this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list'),
-						rootMargin: '0px',
-						threshold: 0.1,
-					};
-					const listBottom = this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list-bottom');
-					this.intersectionObserver = new IntersectionObserver(this._updateVisibleCuesInList, options);
-					this.intersectionObserver.observe(listBottom);
-				} else if (this.intersectionObserver && oldValue.length > 0 && this.captionCues.length === 0) {
-					this.intersectionObserver.disconnect();
-				}
+				this._updateLazyLoadForCaptionsCuesList(oldValue);
 			}
 		});
 	}
 
-	// <script> tags must be added via Javascript in LitElement.
-	// https://stackoverflow.com/a/55693185
-	_appendVttScript() {
-		// Using a relative path (e.g. './scripts/vtt.min.js') in the <script> tag
-		// won't work because the script is on a separate domain from the LMS page.
-		// So we need to construct the absolute URL to the vtt script.
-		const urlOfThisFile = new URL(import.meta.url);
-		const vttScriptUrlPrefix = urlOfThisFile.href.slice(0, urlOfThisFile.href.indexOf('src'));
+	_convertCaptionsTextToCues() {
+		if (this.captions.startsWith('WEBVTT')) {
+			this._getVttLibrary()
+				.then(vttLibrary => {
+					const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
+					this.captionCues = parseWebVttFile(vttParser, this.captions);
+				})
+				.catch(() => {
+					// TODO: Rewrite this (probably in a parent component) so that it works when captions tab is not rendered
+					this._openAlertToast({
+						type: 'critical',
+						text: this.localize('vttLibraryError')
+					});
+				});
+		} else {
+			this.captionCues = parseSrtFile(this.captions);
+		}
+	}
 
-		const script = document.createElement('script');
-		script.src = `${vttScriptUrlPrefix}scripts/vtt.min.js`;
-		return script;
+	async _getVttLibrary() {
+		if (window.WebVTT) {
+			return new Promise(resolve => resolve(window.WebVTT));
+		} else {
+			// Because the WebVTT library is loaded from the server after the initial page render,
+			// it may not have finished downloading yet.
+			let pollCount = 0;
+			const poll = (resolve, reject) => {
+				if (window.WebVTT) {
+					resolve(window.WebVTT);
+				} else {
+					pollCount++;
+					if (pollCount > 20) {
+						reject();
+					}
+					setTimeout(() => poll(resolve, reject), 500);
+				}
+			};
+			return new Promise(poll);
+		}
 	}
 
 	_onFilesAdded(event) {
@@ -309,13 +330,13 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			const fileReader = new FileReader();
 			fileReader.addEventListener('load', event => {
 				try {
-					if (extension === 'srt') {
-						this.captionCues = parseSrtFile(event.target.result);
-					} else {
-						const vttLibrary = window.WebVTT;
-						const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
-						this.captionCues = parseWebVttFile(vttParser, event.target.result);
-					}
+					this.dispatchEvent(new CustomEvent('captions-changed'), {
+						detail: {
+							captions: event.target.result
+						},
+						bubbles: true,
+						composed: true
+					});
 				} catch (error) {
 					this._openAlertToast({type: 'critical', text: this.localize(error.message) });
 					return;
@@ -361,12 +382,31 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		`;
 	}
 
+	_updateLazyLoadForCaptionsCuesList(oldCaptionsCuesValue) {
+		if (oldCaptionsCuesValue && oldCaptionsCuesValue.length === 0 && this.captionCues.length > 0) {
+			const options = {
+				root: this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list'),
+				rootMargin: '0px',
+				threshold: 0.1,
+			};
+			const listBottom = this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list-bottom');
+			this.intersectionObserver = new IntersectionObserver(this._updateVisibleCuesInList, options);
+			this.intersectionObserver.observe(listBottom);
+		} else if (this.intersectionObserver && oldCaptionsCuesValue.length > 0 && this.captionCues.length === 0) {
+			this.intersectionObserver.disconnect();
+		}
+	}
+
 	_updateVisibleCuesInList(entries) {
 		entries.forEach(entry => {
 			if (entry.isIntersecting) {
-				const lastVisibleCueIndex = this.visibleCuesInList.length - 1;
-				if (lastVisibleCueIndex < this.captionCues.length - 1) {
-					this.visibleCuesInList = [...this.visibleCuesInList, ...this.captionCues.slice(lastVisibleCueIndex, lastVisibleCueIndex + constants.NUM_OF_VISIBLE_CAPTIONS_CUES)];
+				if (this.visibleCuesInList.length === 0) {
+					this.visibleCuesInList = this.captionCues.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
+				} else {
+					const lastVisibleCueIndex = this.visibleCuesInList.length - 1;
+					if (lastVisibleCueIndex < this.captionCues.length - 1) {
+						this.visibleCuesInList = [...this.visibleCuesInList, ...this.captionCues.slice(lastVisibleCueIndex, lastVisibleCueIndex + constants.NUM_OF_VISIBLE_CAPTIONS_CUES)];
+					}
 				}
 			}
 		});
