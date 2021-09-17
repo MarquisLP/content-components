@@ -65,23 +65,20 @@ export default class ContentServiceClient {
 		const headers = new Headers();
 		headers.append('pragma', 'no-cache');
 		headers.append('cache-control', 'no-cache');
-		const { captionsUrl } = await this._fetch({
-			path: `/api/${this.tenantId}/content/${contentId}/revisions/${revisionId}/captions/${locale}`,
-			query: { draft, urlOnly: true },
-			headers
-		});
 
-		// The direct download URL to the captions file is already signed,
-		// so if we include the Authorization header from d2l-fetch-auth,
-		// AWS will reject saying there are too many authorization mechanisms.
-		// https://stackoverflow.com/q/31514336
-		const response = await d2lfetch
-			.removeTemp('auth')
-			.fetch(new Request(captionsUrl));
-		if (!response.ok) {
-			throw new Error(response.statusText);
+		try {
+			const response = await this._fetch({
+				path: `/api/${this.tenantId}/content/${contentId}/revisions/${revisionId}/captions/${locale}`,
+				query: { draft, json: true },
+				headers
+			});
+			return response;
+		} catch (error) {
+			if (error.message === 'Not Found') {
+				return { cues: [] };
+			}
+			throw error;
 		}
-		return response;
 	}
 
 	getContent(id) {

@@ -87,7 +87,8 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 	constructor() {
 		super();
 		this._alertMessage = '';
-		this._captions = '';
+		this._captions = [];
+		this._captionsLoadedTimestamp = 0;
 		this._errorOccurred = false;
 		this._revisionIndexToLoad = 0;
 		this._selectedRevisionIndex = 0;
@@ -172,6 +173,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 				<d2l-capture-producer
 					.captions="${this._captions}"
 					@captions-changed="${this._handleCaptionsChanged}"
+					.captions-loaded-timestamp="${this._captionsLoadedTimestamp}"
 					.defaultLanguage="${this._defaultLanguage}"
 					.metadata="${this._metadata}"
 					.selectedLanguage="${this._selectedLanguage}"
@@ -306,8 +308,10 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 				locale,
 				draft: true,
 			});
-			this._captions = await response.text();
+			this._captions = response.cues;
+			this._captionsLoadedTimestamp = Date.now();
 		} catch (error) {
+			this._captions = [];
 			const language = this._languages.find(lang => lang.code === locale);
 			this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
 			this.shadowRoot.querySelector('d2l-alert-toast').open = true;
@@ -323,6 +327,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 			revisionId: revisionId,
 			draft: true
 		});
+		this._loadCaptions(revisionId, this._selectedLanguage.code);
 		this._selectedRevisionIndex = this._revisionIndexToLoad;
 		this._loading = false;
 		this._unsavedChanges = false;

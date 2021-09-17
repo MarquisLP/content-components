@@ -192,8 +192,8 @@ customElements.define('d2l-video-producer-captions-cues-list-item', CaptionsCueL
 class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
-			captions: { type: String },
-			captionCues: { type: Object, attribute: false },
+			captions: { type: Object },
+			captionsLoadedTimestamp: { type: Number },
 			defaultLanguage: { type: Object },
 			selectedLanguage: { type: Object },
 			visibleCuesInList: { type: Object, attribute: false },
@@ -240,79 +240,58 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 
 	constructor() {
 		super();
-		this.captionCues = [];
+		this.captions = [];
+		this.captionsLoadedTimestamp = 0;
 		this.visibleCuesInList = [];
 		this.intersectionObserver = null;
 
 		this._updateVisibleCuesInList = this._updateVisibleCuesInList.bind(this);
-	}
-
-	async firstUpdated() {
-		const fileUploader = this.shadowRoot.querySelector('#file-uploader');
-		fileUploader.addEventListener('d2l-file-uploader-files-added', this._onFilesAdded.bind(this));
+		this._onFilesAdded = this._onFilesAdded.bind(this);
 	}
 
 	render() {
 		return html`
 			<div class="d2l-video-producer-captions">
-				${this.captionCues.length > 0 ? this._renderCuesList() : this._renderEmptyCaptionsMenu()}
+				${this.captions.length > 0 ? this._renderCuesList() : this._renderEmptyCaptionsMenu()}
 				<d2l-alert-toast
 					id="d2l-video-producer-captions-alert-toast"
 				></d2l-alert-toast>
+				${this._appendVttScript()}
 			</div>
 		`;
 	}
 
 	updated(changedProperties) {
 		changedProperties.forEach((oldValue, propName) => {
-			if (propName === 'captions' && this.captionsText !== '') {
-				this._convertCaptionsTextToCues();
-			}
-			if (propName === 'captionCues') {
+			if (propName === 'captions') {
 				this._updateLazyLoadForCaptionsCuesList(oldValue);
+			}
+			if (propName === 'captionsLoadedTimestamp') {
+				this._resetVisibleCuesInList(oldValue);
 			}
 		});
 	}
 
-	_convertCaptionsTextToCues() {
-		if (this.captions.startsWith('WEBVTT')) {
-			this._getVttLibrary()
-				.then(vttLibrary => {
-					const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
-					this.captionCues = parseWebVttFile(vttParser, this.captions);
-				})
-				.catch(() => {
-					// TODO: Rewrite this (probably in a parent component) so that it works when captions tab is not rendered
-					this._openAlertToast({
-						type: 'critical',
-						text: this.localize('vttLibraryError')
-					});
-				});
-		} else {
-			this.captionCues = parseSrtFile(this.captions);
-		}
+	// <script> tags must be added via Javascript in LitElement.
+	// https://stackoverflow.com/a/55693185
+	_appendVttScript() {
+		// Using a relative path (e.g. './scripts/vtt.min.js') in the <script> tag
+		// won't work because the script is on a separate domain from the LMS page.
+		// So we need to construct the absolute URL to the vtt script.
+		const urlOfThisFile = new URL(import.meta.url);
+		const vttScriptUrlPrefix = urlOfThisFile.href.slice(0, urlOfThisFile.href.indexOf('src'));
+
+		const script = document.createElement('script');
+		script.src = `${vttScriptUrlPrefix}scripts/vtt.min.js`;
+		return script;
 	}
 
-	async _getVttLibrary() {
-		if (window.WebVTT) {
-			return new Promise(resolve => resolve(window.WebVTT));
-		} else {
-			// Because the WebVTT library is loaded from the server after the initial page render,
-			// it may not have finished downloading yet.
-			let pollCount = 0;
-			const poll = (resolve, reject) => {
-				if (window.WebVTT) {
-					resolve(window.WebVTT);
-				} else {
-					pollCount++;
-					if (pollCount > 20) {
-						reject();
-					}
-					setTimeout(() => poll(resolve, reject), 500);
-				}
-			};
-			return new Promise(poll);
-		}
+	_dispatchCaptionsChanged(captions) {
+		this.dispatchEvent(new CustomEvent({
+			detail: { captions },
+			bubbles: true,
+			composed: true
+		}));
 	}
 
 	_onFilesAdded(event) {
@@ -330,18 +309,19 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			const fileReader = new FileReader();
 			fileReader.addEventListener('load', event => {
 				try {
-					this.dispatchEvent(new CustomEvent('captions-changed'), {
-						detail: {
-							captions: event.target.result
-						},
-						bubbles: true,
-						composed: true
-					});
+					if (extension === 'vtt') {
+						const vttLibrary = window.WebVTT;
+						const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
+						const parsedCaptions = parseWebVttFile(vttParser, event.target.result);
+						this._dispatchCaptionsChanged(parsedCaptions);
+					} else {
+						const parsedCaptions = parseSrtFile(event.target.result);
+						this._dispatchCaptionsChanged(parsedCaptions);
+					}
 				} catch (error) {
 					this._openAlertToast({type: 'critical', text: this.localize(error.message) });
 					return;
 				}
-				this.visibleCuesInList = this.captionCues.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
 			});
 			fileReader.addEventListener('error', () => {
 				this._openAlertToast({type: 'critical', text: this.localize('captionsReadError') });
@@ -375,15 +355,19 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			<div class="d2l-video-producer-empty-captions-menu">
 				<p class="d2l-label-text">${this.localize('uploadSrtWebVttFile')}</p>
 				<d2l-labs-file-uploader
-					id="file-uploader"
+					@d2l-file-uploader-files-added="${this._onFilesAdded}"
 					label=${this.localize('browseForCaptionsFile')}>
 				</d2l-labs-file-uploader>
 			</div>
 		`;
 	}
 
-	_updateLazyLoadForCaptionsCuesList(oldCaptionsCuesValue) {
-		if (oldCaptionsCuesValue && oldCaptionsCuesValue.length === 0 && this.captionCues.length > 0) {
+	_resetVisibleCuesInList() {
+		this.visibleCuesInList = this.captions.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
+	}
+
+	_updateLazyLoadForCaptionsCuesList(oldCaptionsValue) {
+		if (oldCaptionsValue && oldCaptionsValue.length === 0 && this.captions.length > 0) {
 			const options = {
 				root: this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list'),
 				rootMargin: '0px',
@@ -392,7 +376,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			const listBottom = this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list-bottom');
 			this.intersectionObserver = new IntersectionObserver(this._updateVisibleCuesInList, options);
 			this.intersectionObserver.observe(listBottom);
-		} else if (this.intersectionObserver && oldCaptionsCuesValue.length > 0 && this.captionCues.length === 0) {
+		} else if (this.intersectionObserver && oldCaptionsValue.length > 0 && this.captions.length === 0) {
 			this.intersectionObserver.disconnect();
 		}
 	}
@@ -401,11 +385,11 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		entries.forEach(entry => {
 			if (entry.isIntersecting) {
 				if (this.visibleCuesInList.length === 0) {
-					this.visibleCuesInList = this.captionCues.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
+					this.visibleCuesInList = this.captions.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
 				} else {
 					const lastVisibleCueIndex = this.visibleCuesInList.length - 1;
-					if (lastVisibleCueIndex < this.captionCues.length - 1) {
-						this.visibleCuesInList = [...this.visibleCuesInList, ...this.captionCues.slice(lastVisibleCueIndex, lastVisibleCueIndex + constants.NUM_OF_VISIBLE_CAPTIONS_CUES)];
+					if (lastVisibleCueIndex < this.captions.length - 1) {
+						this.visibleCuesInList = [...this.visibleCuesInList, ...this.captions.slice(lastVisibleCueIndex, lastVisibleCueIndex + constants.NUM_OF_VISIBLE_CAPTIONS_CUES)];
 					}
 				}
 			}
