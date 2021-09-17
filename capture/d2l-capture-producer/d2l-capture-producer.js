@@ -20,6 +20,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
 		return {
 			captions: { type: Array },
+			captionsLoading: { type: Boolean },
 			defaultLanguage: { type: Object },
 			metadata: { type: Object },
 			selectedLanguage: { type: Object },
@@ -186,6 +187,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 								.captions="${this.captions}"
 								@captions-changed=${this._handleCaptionsChanged}
 								.defaultLanguage="${this.defaultLanguage}"
+								?loading="${this.captionsLoading}"
 								.selectedLanguage="${this.selectedLanguage}"
 							></d2l-video-producer-captions>
 						</d2l-tab-panel>
@@ -755,6 +757,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	get _loading() {
 		return !(
 			this.metadata
+			&& this.captions
 			&& this._videoLoaded
 			&& this.selectedLanguage
 			&& this.selectedLanguage.code

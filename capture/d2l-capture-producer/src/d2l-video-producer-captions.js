@@ -194,6 +194,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		return {
 			captions: { type: Array },
 			defaultLanguage: { type: Object },
+			loading: { type: Boolean },
 			selectedLanguage: { type: Object },
 			_numberOfVisibleCuesInList: { type: Number, attribute: false }
 		};
@@ -202,9 +203,13 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	static get styles() {
 		return [ labelStyles, css`
 			.d2l-video-producer-captions {
+				align-items: center;
 				border: 1px solid var(--d2l-color-mica);
 				box-sizing: border-box;
+				display: flex;
+				flex-direction: column;
 				height: 532px;
+				justify-content: center;
 				position: relative;
 				width: 360px;
 			}
@@ -243,14 +248,14 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		this._numberOfVisibleCuesInList = 0;
 		this.intersectionObserver = null;
 
-		this._loadMoreVisibleCuesInList = this._loadMoreVisibleCuesInList.bind(this);
+		this._loadMoreVisibleCuesIfListBottomReached = this._loadMoreVisibleCuesIfListBottomReached.bind(this);
 		this._onFilesAdded = this._onFilesAdded.bind(this);
 	}
 
 	render() {
 		return html`
 			<div class="d2l-video-producer-captions">
-				${this.captions.length > 0 ? this._renderCuesList() : this._renderEmptyCaptionsMenu()}
+				${this._renderContent()}
 				<d2l-alert-toast
 					id="d2l-video-producer-captions-alert-toast"
 				></d2l-alert-toast>
@@ -263,7 +268,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		changedProperties.forEach((oldValue, propName) => {
 			if (propName === 'captions') {
 				this._updateLazyLoadForCaptionsCuesList(oldValue);
-				this._updateVisibleCuesInList();
+				this._updateNumberOfVisibleCuesInList();
 			}
 		});
 	}
@@ -289,7 +294,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		}));
 	}
 
-	_loadMoreVisibleCuesInList(entries) {
+	_loadMoreVisibleCuesIfListBottomReached(entries) {
 		entries.forEach(entry => {
 			if (entry.isIntersecting) {
 				if (this._numberOfVisibleCuesInList === 0) {
@@ -346,6 +351,16 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		alertToast.innerText = text;
 	}
 
+	_renderContent() {
+		if (this.loading) {
+			return this._renderLoadingIndicator();
+		} else if (this.captions.length === 0) {
+			return this._renderEmptyCaptionsMenu();
+		} else {
+			return this._renderCuesList();
+		}
+	}
+
 	_renderCuesList() {
 		return html`
 			<div class="d2l-video-producer-captions-cues-list">
@@ -371,26 +386,30 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		`;
 	}
 
+	_renderLoadingIndicator() {
+		return html`<d2l-loading-spinner size="150"></d2l-loading-spinner>`;
+	}
+
 	_resetVisibleCuesInList() {
 		this.visibleCuesInList = this.captions.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
 	}
 
 	_updateLazyLoadForCaptionsCuesList(oldCaptionsValue) {
-		if (oldCaptionsValue && oldCaptionsValue.length === 0 && this.captions.length > 0) {
+		if (!this.loading && oldCaptionsValue && oldCaptionsValue.length === 0 && this.captions.length > 0) {
 			const options = {
 				root: this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list'),
 				rootMargin: '0px',
 				threshold: 0.1,
 			};
 			const listBottom = this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list-bottom');
-			this.intersectionObserver = new IntersectionObserver(this._loadMoreVisibleCuesInList, options);
+			this.intersectionObserver = new IntersectionObserver(this._loadMoreVisibleCuesIfListBottomReached, options);
 			this.intersectionObserver.observe(listBottom);
-		} else if (this.intersectionObserver && oldCaptionsValue.length > 0 && this.captions.length === 0) {
+		} else if (this.intersectionObserver && oldCaptionsValue && oldCaptionsValue.length > 0 && this.captions.length === 0) {
 			this.intersectionObserver.disconnect();
 		}
 	}
 
-	_updateVisibleCuesInList() {
+	_updateNumberOfVisibleCuesInList() {
 		if ((this.captions.length > 0) && (this._numberOfVisibleCuesInList === 0)) {
 			this._numberOfVisibleCuesInList = constants.NUM_OF_VISIBLE_CAPTIONS_CUES;
 		} else if (this.captions.length < this._numberOfVisibleCuesInList) {

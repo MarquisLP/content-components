@@ -22,6 +22,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 		return {
 			_alertMessage: { type: String, attribute: false },
 			_captions: { type: Array, attribute: false },
+			_captionsLoading: { type: Boolean, attribute: false },
 			_content: { type: String, attribute: false },
 			_defaultLanguage: { type: String, attribute: false },
 			_errorOccurred: { type: Boolean, attribute: false },
@@ -88,6 +89,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 		super();
 		this._alertMessage = '';
 		this._captions = [];
+		this._captionsLoading = true;
 		this._errorOccurred = false;
 		this._revisionIndexToLoad = 0;
 		this._selectedRevisionIndex = 0;
@@ -172,6 +174,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 				<d2l-capture-producer
 					.captions="${this._captions}"
 					@captions-changed="${this._handleCaptionsChanged}"
+					.captionsLoading="${this._captionsLoading}"
 					.defaultLanguage="${this._defaultLanguage}"
 					.metadata="${this._metadata}"
 					.selectedLanguage="${this._selectedLanguage}"
@@ -299,6 +302,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 	}
 
 	async _loadCaptions(revision, locale) {
+		this._captionsLoading = true;
 		try {
 			const response = await this.apiClient.getCaptions({
 				contentId: this._content.id,
@@ -307,11 +311,11 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 				draft: true,
 			});
 			this._captions = response.cues;
+			this._captionsLoading = false;
 		} catch (error) {
 			const language = this._languages.find(lang => lang.code === locale);
 			this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
 			this.shadowRoot.querySelector('d2l-alert-toast').open = true;
-			return;
 		}
 	}
 
