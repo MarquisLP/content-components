@@ -192,7 +192,7 @@ customElements.define('d2l-video-producer-captions-cues-list-item', CaptionsCueL
 class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
-			captions: { type: Object },
+			captions: { type: Array },
 			captionsLoadedTimestamp: { type: Number },
 			defaultLanguage: { type: Object },
 			selectedLanguage: { type: Object },
@@ -264,6 +264,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	updated(changedProperties) {
 		changedProperties.forEach((oldValue, propName) => {
 			if (propName === 'captions') {
+				console.log(this.captions);
 				this._updateLazyLoadForCaptionsCuesList(oldValue);
 			}
 			if (propName === 'captionsLoadedTimestamp') {
@@ -286,11 +287,10 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		return script;
 	}
 
-	_dispatchCaptionsChanged(captions) {
-		this.dispatchEvent(new CustomEvent({
-			detail: { captions },
-			bubbles: true,
-			composed: true
+	_dispatchCaptionsChanged({captions, newFile = false}) {
+		this.dispatchEvent(new CustomEvent('captions-changed', {
+			detail: { captions, newFile  },
+			composed: false
 		}));
 	}
 
@@ -313,10 +313,10 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 						const vttLibrary = window.WebVTT;
 						const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
 						const parsedCaptions = parseWebVttFile(vttParser, event.target.result);
-						this._dispatchCaptionsChanged(parsedCaptions);
+						this._dispatchCaptionsChanged({ captions: parsedCaptions, newFile: true } );
 					} else {
 						const parsedCaptions = parseSrtFile(event.target.result);
-						this._dispatchCaptionsChanged(parsedCaptions);
+						this._dispatchCaptionsChanged({ captions: parsedCaptions, newFile: true } );
 					}
 				} catch (error) {
 					this._openAlertToast({type: 'critical', text: this.localize(error.message) });

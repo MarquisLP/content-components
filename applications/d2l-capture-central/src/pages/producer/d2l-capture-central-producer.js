@@ -21,7 +21,8 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 	static get properties() {
 		return {
 			_alertMessage: { type: String, attribute: false },
-			_captions: { type: Object, attribute: false },
+			_captions: { type: Array, attribute: false },
+			_captionsLoadedTimestamp: { type: Number, attribute: false },
 			_content: { type: String, attribute: false },
 			_defaultLanguage: { type: String, attribute: false },
 			_errorOccurred: { type: Boolean, attribute: false },
@@ -309,9 +310,9 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 				draft: true,
 			});
 			this._captions = response.cues;
+			console.log(this._captions);
 			this._captionsLoadedTimestamp = Date.now();
 		} catch (error) {
-			this._captions = [];
 			const language = this._languages.find(lang => lang.code === locale);
 			this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
 			this.shadowRoot.querySelector('d2l-alert-toast').open = true;

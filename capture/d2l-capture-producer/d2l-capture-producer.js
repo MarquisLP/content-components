@@ -19,8 +19,8 @@ import { Timeline } from './src/timeline';
 class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
 		return {
-			captions: { type: Object },
-			captionsLoadedTimestamp: { type: Number },
+			captions: { type: Array },
+			captionsLoadedTimestamp: { type: Number, attribute: 'captions-loaded-timestamp' },
 			defaultLanguage: { type: Object },
 			metadata: { type: Object },
 			selectedLanguage: { type: Object },
@@ -187,6 +187,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 							<d2l-video-producer-captions
 								.captions="${this.captions}"
 								.captions-loaded-timestamp="${this.captionsLoadedTimestamp}"
+								@captions-changed=${this._handleCaptionsChanged}
 								.defaultLanguage="${this.defaultLanguage}"
 								.selectedLanguage="${this.selectedLanguage}"
 							></d2l-video-producer-captions>
@@ -214,6 +215,9 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		super.updated(changedProperties);
 		if (changedProperties.has('metadata') && this.metadata && this._videoLoaded) {
 			this._resetTimelineWithNewCuts(this.metadata.cuts);
+		}
+		if (changedProperties.has('captions')) {
+			console.log(this.captions);
 		}
 	}
 
@@ -475,6 +479,16 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	}
 
 	//#endregion
+	_fireCaptionsChangedEvent(detail) {
+		this.dispatchEvent(new CustomEvent(
+			'captions-changed',
+			{
+				composed: false,
+				detail
+			}
+		));
+	}
+
 	_fireMetadataChangedEvent({ cuts = this._timeline.getCuts(), chapters = this.metadata.chapters } = {}) {
 		this.dispatchEvent(new CustomEvent(
 			'metadata-changed',
@@ -715,6 +729,10 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	}
 
 	//#endregion
+	_handleCaptionsChanged(e) {
+		this._fireCaptionsChangedEvent(e.detail);
+	}
+
 	_handleChaptersChanged(e) {
 		this._fireMetadataChangedEvent({ chapters: e.detail.chapters });
 	}
