@@ -20,7 +20,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
 		return {
 			captions: { type: Array },
-			captionsLoadedTimestamp: { type: Number, attribute: 'captions-loaded-timestamp' },
 			defaultLanguage: { type: Object },
 			metadata: { type: Object },
 			selectedLanguage: { type: Object },
@@ -119,7 +118,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		this._currentMark = null;
 
 		this.captions = [];
-		this.captionsLoadedTimestamp = 0;
 
 		this.metadata = { cuts: [], chapters: [] };
 		this.src = '';
@@ -186,7 +184,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 						>
 							<d2l-video-producer-captions
 								.captions="${this.captions}"
-								.captions-loaded-timestamp="${this.captionsLoadedTimestamp}"
 								@captions-changed=${this._handleCaptionsChanged}
 								.defaultLanguage="${this.defaultLanguage}"
 								.selectedLanguage="${this.selectedLanguage}"
@@ -215,9 +212,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		super.updated(changedProperties);
 		if (changedProperties.has('metadata') && this.metadata && this._videoLoaded) {
 			this._resetTimelineWithNewCuts(this.metadata.cuts);
-		}
-		if (changedProperties.has('captions')) {
-			console.log(this.captions);
 		}
 	}
 

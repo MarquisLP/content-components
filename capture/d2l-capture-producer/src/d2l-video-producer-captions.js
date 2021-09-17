@@ -193,10 +193,9 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
 			captions: { type: Array },
-			captionsLoadedTimestamp: { type: Number },
 			defaultLanguage: { type: Object },
 			selectedLanguage: { type: Object },
-			visibleCuesInList: { type: Object, attribute: false },
+			_numberOfVisibleCuesInList: { type: Number, attribute: false }
 		};
 	}
 
@@ -241,11 +240,10 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	constructor() {
 		super();
 		this.captions = [];
-		this.captionsLoadedTimestamp = 0;
-		this.visibleCuesInList = [];
+		this._numberOfVisibleCuesInList = 0;
 		this.intersectionObserver = null;
 
-		this._updateVisibleCuesInList = this._updateVisibleCuesInList.bind(this);
+		this._loadMoreVisibleCuesInList = this._loadMoreVisibleCuesInList.bind(this);
 		this._onFilesAdded = this._onFilesAdded.bind(this);
 	}
 
@@ -264,11 +262,8 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	updated(changedProperties) {
 		changedProperties.forEach((oldValue, propName) => {
 			if (propName === 'captions') {
-				console.log(this.captions);
 				this._updateLazyLoadForCaptionsCuesList(oldValue);
-			}
-			if (propName === 'captionsLoadedTimestamp') {
-				this._resetVisibleCuesInList(oldValue);
+				this._updateVisibleCuesInList();
 			}
 		});
 	}
@@ -287,11 +282,25 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		return script;
 	}
 
-	_dispatchCaptionsChanged({captions, newFile = false}) {
+	_dispatchCaptionsChanged(captions) {
 		this.dispatchEvent(new CustomEvent('captions-changed', {
-			detail: { captions, newFile  },
+			detail: { captions },
 			composed: false
 		}));
+	}
+
+	_loadMoreVisibleCuesInList(entries) {
+		entries.forEach(entry => {
+			if (entry.isIntersecting) {
+				if (this._numberOfVisibleCuesInList === 0) {
+					this._numberOfVisibleCuesInList = constants.NUM_OF_VISIBLE_CAPTIONS_CUES;
+				} else {
+					if (this._numberOfVisibleCuesInList < this.captions.length - 1) {
+						this._numberOfVisibleCuesInList += constants.NUM_OF_VISIBLE_CAPTIONS_CUES;
+					}
+				}
+			}
+		});
 	}
 
 	_onFilesAdded(event) {
@@ -313,10 +322,10 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 						const vttLibrary = window.WebVTT;
 						const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
 						const parsedCaptions = parseWebVttFile(vttParser, event.target.result);
-						this._dispatchCaptionsChanged({ captions: parsedCaptions, newFile: true } );
+						this._dispatchCaptionsChanged(parsedCaptions);
 					} else {
 						const parsedCaptions = parseSrtFile(event.target.result);
-						this._dispatchCaptionsChanged({ captions: parsedCaptions, newFile: true } );
+						this._dispatchCaptionsChanged(parsedCaptions);
 					}
 				} catch (error) {
 					this._openAlertToast({type: 'critical', text: this.localize(error.message) });
@@ -340,7 +349,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	_renderCuesList() {
 		return html`
 			<div class="d2l-video-producer-captions-cues-list">
-				${this.visibleCuesInList.map(captionCue => html`
+				${this.captions.slice(0, this._numberOfVisibleCuesInList).map(captionCue => html`
 					<d2l-video-producer-captions-cues-list-item
 						captions-cue=${JSON.stringify(captionCue)}
 					></d2l-video-producer-captions-cues-list-item>
@@ -374,26 +383,19 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 				threshold: 0.1,
 			};
 			const listBottom = this.shadowRoot.querySelector('.d2l-video-producer-captions-cues-list-bottom');
-			this.intersectionObserver = new IntersectionObserver(this._updateVisibleCuesInList, options);
+			this.intersectionObserver = new IntersectionObserver(this._loadMoreVisibleCuesInList, options);
 			this.intersectionObserver.observe(listBottom);
 		} else if (this.intersectionObserver && oldCaptionsValue.length > 0 && this.captions.length === 0) {
 			this.intersectionObserver.disconnect();
 		}
 	}
 
-	_updateVisibleCuesInList(entries) {
-		entries.forEach(entry => {
-			if (entry.isIntersecting) {
-				if (this.visibleCuesInList.length === 0) {
-					this.visibleCuesInList = this.captions.slice(0, constants.NUM_OF_VISIBLE_CAPTIONS_CUES);
-				} else {
-					const lastVisibleCueIndex = this.visibleCuesInList.length - 1;
-					if (lastVisibleCueIndex < this.captions.length - 1) {
-						this.visibleCuesInList = [...this.visibleCuesInList, ...this.captions.slice(lastVisibleCueIndex, lastVisibleCueIndex + constants.NUM_OF_VISIBLE_CAPTIONS_CUES)];
-					}
-				}
-			}
-		});
+	_updateVisibleCuesInList() {
+		if ((this.captions.length > 0) && (this._numberOfVisibleCuesInList === 0)) {
+			this._numberOfVisibleCuesInList = constants.NUM_OF_VISIBLE_CAPTIONS_CUES;
+		} else if (this.captions.length < this._numberOfVisibleCuesInList) {
+			this._numberOfVisibleCuesInList = this.captions.length;
+		}
 	}
 }
 
