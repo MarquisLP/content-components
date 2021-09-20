@@ -50,29 +50,18 @@ suscipit in, tincidunt et tellus.
 00:01:02,321 --> 00:01:02,600
 Praesent sollicitudin ac urna sed porttitor.`;
 			const expected = [
-				{
-					text: 'Lorem ipsum dolor sit amet, consectetur adipiscing\nelit.',
-					startTime: 0,
-					endTime: 2,
-				},
-				{
-					text: 'Nulla massa ante, suscipit nec\nsuscipit in, tincidunt et tellus.',
-					startTime: 2,
-					endTime: 3,
-				},
-				{
-					text: 'Etiam ac lorem at dolor egestas\nultricies non at lacus.',
-					startTime: 3,
-					endTime: 62.321,
-				},
-				{
-					text: 'Praesent sollicitudin ac urna sed porttitor.',
-					startTime: 62.321,
-					endTime: 62.600,
-				},
+				new VTTCue(0, 2, 'Lorem ipsum dolor sit amet, consectetur adipiscing\nelit.'),
+				new VTTCue(2, 3, 'Nulla massa ante, suscipit nec\nsuscipit in, tincidunt et tellus.'),
+				new VTTCue(3, 62.321, 'Etiam ac lorem at dolor egestas\nultricies non at lacus.'),
+				new VTTCue(62.321, 62.600, 'Praesent sollicitudin ac urna sed porttitor.')
 			];
 			const actual = parseSrtFile(srtFileData);
-			assert.deepEqual(actual, expected);
+			for (let i = 0; i < expected.length; i++) {
+				assert.equal(actual[i].constructor.name, 'VTTCue', `Incorrect object class for cue at index ${i}`);
+				assert.equal(actual[i].startTime, expected[i].startTime, `Incorrect start time for cue at index ${i}`);
+				assert.equal(actual[i].endTime, expected[i].endTime, `Incorrect end time for cue at index ${i}`);
+				assert.equal(actual[i].text, expected[i].text, `Incorrect text for cue at index ${i}`);
+			}
 		});
 
 		it('when given invalid SRT data, throws an error containing the name of a localized error string', () => {
@@ -112,26 +101,10 @@ in New York City
 			vttParserMock.flush.callsFake(() => {
 				if (vttParserMock.parse.calledWith(vttFileData)) {
 					const unsortedCues = [
-						{
-							startTime: 1,
-							endTime: 3,
-							text: '<v Roger Bingham>We are\nin New York City',
-						},
-						{
-							startTime: 6,
-							endTime: 8,
-							text: '<v Roger Bingham>from the American Museum of Natural History',
-						},
-						{
-							startTime: 3,
-							endTime: 6,
-							text: '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street',
-						},
-						{
-							startTime: 8,
-							endTime: 10,
-							text: '<v Roger Bingham>And with me is Neil deGrasse Tyson',
-						},
+						new VTTCue(1, 3, '<v Roger Bingham>We are\nin New York City'),
+						new VTTCue(6, 8, '<v Roger Bingham>from the American Museum of Natural History'),
+						new VTTCue(3, 6, '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street'),
+						new VTTCue(8, 10, '<v Roger Bingham>And with me is Neil deGrasse Tyson'),
 					];
 					unsortedCues.forEach(cue => {
 						vttParserMock.oncue(cue);
@@ -140,29 +113,18 @@ in New York City
 			});
 
 			const expected = [
-				{
-					startTime: 1,
-					endTime: 3,
-					text: '<v Roger Bingham>We are\nin New York City',
-				},
-				{
-					startTime: 3,
-					endTime: 6,
-					text: '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street',
-				},
-				{
-					startTime: 6,
-					endTime: 8,
-					text: '<v Roger Bingham>from the American Museum of Natural History',
-				},
-				{
-					startTime: 8,
-					endTime: 10,
-					text: '<v Roger Bingham>And with me is Neil deGrasse Tyson',
-				},
+				new VTTCue(1, 3, '<v Roger Bingham>We are\nin New York City'),
+				new VTTCue(3, 6, '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street'),
+				new VTTCue(6, 8, '<v Roger Bingham>from the American Museum of Natural History'),
+				new VTTCue(8, 10, '<v Roger Bingham>And with me is Neil deGrasse Tyson'),
 			];
 			const actual = parseWebVttFile(vttParserMock, vttFileData);
-			assert.deepEqual(actual, expected);
+			for (let i = 0; i < expected.length; i++) {
+				assert.equal(actual[i].constructor.name, 'VTTCue', `Incorrect object class for cue at index ${i}`);
+				assert.equal(actual[i].startTime, expected[i].startTime, `Incorrect start time for cue at index ${i}`);
+				assert.equal(actual[i].endTime, expected[i].endTime, `Incorrect end time for cue at index ${i}`);
+				assert.equal(actual[i].text, expected[i].text, `Incorrect text for cue at index ${i}`);
+			}
 		});
 
 		it('when given invalid WebVTT data, throws an error containing the name of a localized error string', () => {

@@ -11,7 +11,6 @@ import '@brightspace-ui/core/components/loading-spinner/loading-spinner.js';
 import '../../../../../capture/d2l-capture-producer.js';
 
 import { css, html } from 'lit-element/lit-element.js';
-import { autorun } from 'mobx';
 import { DependencyRequester } from '../../mixins/dependency-requester-mixin.js';
 import { navigationSharedStyle } from '../../style/d2l-navigation-shared-styles.js';
 import { pageNames } from '../../util/constants.js';
@@ -20,21 +19,17 @@ import { PageViewElement } from '../../components/page-view-element';
 class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 	static get properties() {
 		return {
-			_alertMessage: { type: String, attribute: false },
 			_captions: { type: Array, attribute: false },
 			_captionsLoading: { type: Boolean, attribute: false },
-			_content: { type: String, attribute: false },
 			_defaultLanguage: { type: String, attribute: false },
 			_errorOccurred: { type: Boolean, attribute: false },
 			_finishing: { type: Boolean },
 			_languages: { type: String, attribute: false },
 			_loading: { type: Boolean, attribute: false },
 			_metadata: { type: Object, attribute: false },
-			_revisionIndexToLoad: { type: Number, attribute: false },
 			_revisionsLatestToOldest: { type: Object, attribute: false },
 			_saving: { type: Boolean },
 			_selectedLanguage: { type: String, attribute: false },
-			_selectedRevisionIndex: { type: Number, attribute: false },
 			_sourceUrl: { type: String, attribute: false },
 			_unsavedChanges: { type: String, attribute: false }
 		};
@@ -98,28 +93,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 
 	async connectedCallback() {
 		super.connectedCallback();
-		this.apiClient = this.requestDependency('content-service-client');
 		this.userBrightspaceClient = this.requestDependency('user-brightspace-client');
-		autorun(async() => {
-			if (this.rootStore.routingStore.page === 'producer'
-				&& this.rootStore.routingStore.params.id
-			) {
-				this._loading = true;
-				this._content = await this.apiClient.getContent(this.rootStore.routingStore.params.id);
-				if (this._content?.revisions) {
-					this._revisionsLatestToOldest = this._content.revisions.slice().reverse();
-				}
-				this._sourceUrl = (await this.apiClient.getSignedUrl(this.rootStore.routingStore.params.id)).value;
-				await this._setupLanguages();
-				this._loadCaptions('latest', this._selectedLanguage.code);
-				this._metadata = await this.apiClient.getMetadata({
-					contentId: this._content.id,
-					revisionId: 'latest',
-					draft: true
-				});
-				this._loading = false;
-			}
-		});
 	}
 
 	render() {
@@ -182,29 +156,6 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 					src="${this._sourceUrl}"
 				></d2l-capture-producer>
 
-				<d2l-alert-toast type="${this.errorOccurred ? 'error' : 'default'}">
-					${this._alertMessage}
-				</d2l-alert-toast>
-
-				<d2l-dialog-confirm
-					class="d2l-capture-central-producer-dialog-confirm-revision-change"
-					text="${this.localize('confirmRevisionChangeWithUnsavedData')}"
-				>
-					<d2l-button
-						@click="${this._loadNewlySelectedRevision}"
-						data-dialog-action="yes"
-						slot="footer"
-					>
-						${this.localize('yes')}
-					</d2l-button>
-					<d2l-button
-						data-dialog-action="no"
-						primary
-						slot="footer"
-					>
-						${this.localize('no')}
-					</d2l-button>
-				</d2l-dialog-confirm>
 			</div>
 		`;
 	}
@@ -298,24 +249,6 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 			this.shadowRoot.querySelector('.d2l-capture-central-producer-dialog-confirm-revision-change').open();
 		} else {
 			this._loadNewlySelectedRevision();
-		}
-	}
-
-	async _loadCaptions(revision, locale) {
-		this._captionsLoading = true;
-		try {
-			const response = await this.apiClient.getCaptions({
-				contentId: this._content.id,
-				revisionId: revision,
-				locale,
-				draft: true,
-			});
-			this._captions = response.cues;
-			this._captionsLoading = false;
-		} catch (error) {
-			const language = this._languages.find(lang => lang.code === locale);
-			this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
-			this.shadowRoot.querySelector('d2l-alert-toast').open = true;
 		}
 	}
 
