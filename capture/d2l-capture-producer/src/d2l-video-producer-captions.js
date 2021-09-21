@@ -14,7 +14,9 @@ import constants from './constants.js';
 class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
-			captionsCue: { type: Object, attribute: 'captions-cue' },
+			startTime: { type: String, attribute: 'start-time' },
+			endTime: { type: String, attribute: 'end-time' },
+			text: { type: String, attribute: 'text' },
 			expanded: { type: Boolean }
 		};
 	}
@@ -128,7 +130,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 							class="d2l-video-producer-captions-cue-start-timestamp"
 							label=${this.localize('captionsCueStartTimestamp')}
 							description=${this.localize('captionsCueStartTimestampDescription')}
-							value=${formatTimestampText(this.captionsCue.startTime)}
+							value=${formatTimestampText(this.startTime)}
 						></d2l-input-text>
 					</div>
 					<div class="d2l-video-producer-captions-cue-timestamp-container">
@@ -143,7 +145,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 							class="d2l-video-producer-captions-cue-end-timestamp"
 							label=${this.localize('captionsCueEndTimestamp')}
 							description=${this.localize('captionsCueEndTimestampDescription')}
-							value=${formatTimestampText(this.captionsCue.endTime)}
+							value=${formatTimestampText(this.endTime)}
 						></d2l-input-text>
 					</div>
 				</div>
@@ -158,7 +160,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 					class="d2l-input d2l-video-producer-captions-cue-text-input"
 					aria-label=${this.localize('captionsCueText')}
 					rows="2"
-				>${this.captionsCue.text}</textarea>
+				>${this.text}</textarea>
 				<div class="d2l-video-producer-captions-cue-main-controls-buttons">
 					<d2l-button-icon
 						text=${this.localize('deleteCaptionsCue')}
@@ -364,9 +366,11 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	_renderCuesList() {
 		return html`
 			<div class="d2l-video-producer-captions-cues-list">
-				${[...Array(this._numberOfVisibleCuesInList).keys()].map(index => html`
+				${[...Array(Math.min(this._numberOfVisibleCuesInList, this.captions.length)).keys()].map(index => html`
 					<d2l-video-producer-captions-cues-list-item
-						captions-cue=${this.captions[index]}
+						start-time="${this.captions[index].startTime}"
+						end-time="${this.captions[index].endTime}"
+						text="${this.captions[index].text}"
 					></d2l-video-producer-captions-cues-list-item>
 				`)}
 				<div class="d2l-video-producer-captions-cues-list-bottom"></div>
