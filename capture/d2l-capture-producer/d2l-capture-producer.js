@@ -1,9 +1,14 @@
-import '@brightspace-ui/core/components/tabs/tabs.js';
-import '@brightspace-ui/core/components/tabs/tab-panel.js';
+import '@brightspace-ui/core/components/alert/alert-toast.js';
 import '@brightspace-ui/core/components/button/button-icon.js';
 import '@brightspace-ui/core/components/button/button.js';
 import '@brightspace-ui/core/components/colors/colors.js';
+import '@brightspace-ui/core/components/dialog/dialog-confirm.js';
+import '@brightspace-ui/core/components/dropdown/dropdown-button-subtle.js';
+import '@brightspace-ui/core/components/dropdown/dropdown-menu.js';
+import '@brightspace-ui/core/components/tabs/tabs.js';
+import '@brightspace-ui/core/components/tabs/tab-panel.js';
 import '@brightspace-ui-labs/media-player/media-player.js';
+import '@brightspace-ui-labs/video-producer/src/video-producer-language-selector.js';
 import './src/d2l-video-producer-captions.js';
 import './src/d2l-video-producer-chapters.js';
 
@@ -30,14 +35,19 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			contentId: { type: String, attribute: 'content-id' },
 			_defaultLanguage: { type: Object, attribute: false },
 			endpoint: { type: String },
+			_errorOccurred: { type: Boolean, attribute: false },
+			_finishing: { type: Boolean, attribute: false },
+			_languages: { type: String, attribute: false },
+			_loading: { type: Boolean, attribute: false },
 			_metadata: { type: Object, attribute: false },
 			_revisionIndexToLoad: { type: Number, attribute: false },
 			_revisionsLatestToOldest: { type: Object, attribute: false },
+			_saving: { type: Boolean, attribute: false },
 			_selectedLanguage: { type: Object, attribute: false },
 			_selectedRevisionIndex: { type: Number, attribute: false },
 			_src: { type: String, attribute: false },
-			_loading: { type: Boolean, attribute: false },
 			tenantId: { type: String, attribute: 'tenant-id' },
+			_unsavedChanges: { type: String, attribute: false },
 			_videoLoaded: { type: Boolean, attribute: false },
 			_zoomMultiplier: { type: Number, attribute: false },
 			_zoomMultiplierDisplayOpacity: { type: Number, attribute: false },
@@ -46,10 +56,45 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 	static get styles() {
 		return [selectStyles, css`
-			.d2l-video-producer {
+			.d2l-video-producer-top-bar-controls {
+				align-items: center;
+				display: flex;
+				justify-content: flex-end;
+				margin-bottom: 15px;
+			}
+
+			d2l-labs-video-producer-language-selector {
+				margin-right: auto;
+			}
+
+			.d2l-video-producer-controls-revision-dropdown {
+				margin-right: 10px;
+			}
+
+			.d2l-video-producer-controls-publish-button {
+				margin-left: 10px;
+			}
+
+			.d2l-video-producer-controls-publish-button .d2l-video-producer-controls-publishing {
+				display: flex;
+				align-items: center;
+			}
+
+			.d2l-video-producer-controls-publish-button d2l-loading-spinner {
+				margin-right: 5px;
+			}
+
+			d2l-loading-spinner {
+				display: flex;
+				margin: auto;
+				margin-top: 200px;
+			}
+
+			.d2l-video-producer-main-content {
 				display: flex;
 				flex-direction: column;
 			}
+
 			.d2l-video-producer-video-controls {
 				display: flex;
 				height: 580px;
@@ -106,8 +151,19 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		`];
 	}
 
+	static get content() {
+		return this._content;
+	}
+
 	constructor() {
 		super();
+
+		this._revisionIndexToLoad = 0;
+		this._selectedRevisionIndex = 0;
+		this._unsavedChanges = false;
+
+		this._alertMessage = '';
+		this._errorOccurred = false;
 
 		this._controlMode = constants.CONTROL_MODES.SEEK;
 		this._shouldResumePlaying = false;
@@ -131,6 +187,8 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		this._currentMark = null;
 
 		this._captions = [];
+		this._captionsUrl = '';
+		this._captionsLoading = true;
 
 		this._metadata = { cuts: [], chapters: [] };
 		this._src = '';
@@ -141,27 +199,25 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	async connectedCallback() {
 		super.connectedCallback();
 
-		this._apiClient = new ContentServiceClient({
+		this.apiClient = new ContentServiceClient({
 			endpoint: this.endpoint,
 			tenantId: this.tenantId
 		});
-		this._userBrightspaceClient = new UserBrightspaceClient();
+		this.userBrightspaceClient = new UserBrightspaceClient();
 
 		autorun(async() => {
-			this._loading = true;
-			this._content = await this._apiClient.getContent(this.contentId);
+			this._content = await this.apiClient.getContent(this.contentId);
 			if (this._content?.revisions) {
 				this._revisionsLatestToOldest = this._content.revisions.slice().reverse();
 			}
-			this._sourceUrl = (await this._apiClient.getSignedUrl(this.contentId)).value;
+			this._src = (await this.apiClient.getSignedUrl(this.contentId)).value;
 			await this._setupLanguages();
 			this._loadCaptions('latest', this._selectedLanguage.code);
-			this._metadata = await this._apiClient.getMetadata({
+			this._metadata = await this.apiClient.getMetadata({
 				contentId: this.contentId,
 				revisionId: 'latest',
 				draft: true
 			});
-			this._loading = false;
 		});
 	}
 
@@ -194,82 +250,124 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		};
 		return html`
 			<div class="d2l-video-producer">
-				<div class="d2l-video-producer-video-controls">
-					<d2l-labs-media-player
-						@pause="${this._pauseUpdatingVideoTime}"
-						@play="${this._startUpdatingVideoTime}"
-						@seeking="${this._updateVideoTime}"
-						controls
-						src="${this._src}"
-						@trackloaded="${this._handleTrackLoaded}"
+				<div class="d2l-video-producer-top-bar-controls">
+					<d2l-labs-video-producer-language-selector
+						.languages="${this._languages}"
+						.selectedLanguage="${this._selectedLanguage}"
+						@selected-language-changed="${this._handleSelectedLanguageChanged}"
+					></d2l-labs-video-producer-language-selector>
+					<d2l-dropdown-button-subtle
+						class="d2l-video-producer-controls-revision-dropdown"
+						text="${this.localize('revisionNumber', { number: (this._revisionsLatestToOldest ? this._revisionsLatestToOldest.length - this._selectedRevisionIndex : 1) })}"
 					>
-						${this._captionsUrl ? html`<track src="${this._captionsUrl}" srclang="${this._selectedLanguage.code}" label="${this._selectedLanguage.name}" kind="captions">` : ''}
-					</d2l-labs-media-player>
-					<d2l-tabs>
-						<d2l-tab-panel
-							selected
-							no-padding
-							text=${this.localize('tableOfContents')}
+						<d2l-dropdown-menu
+							@d2l-menu-item-select="${this._handleSelectedRevisionChanged}"
 						>
-							<d2l-video-producer-chapters
-								.chapters="${this._metadata && this._metadata.chapters}"
-								.defaultLanguage="${this._defaultLanguage}"
-								.selectedLanguage="${this._selectedLanguage}"
-								?loading="${this._loading}"
-								@add-new-chapter="${this._addNewChapter}"
-								@chapters-changed="${this._handleChaptersChanged}"
-								@set-chapter-to-current-time="${this._setChapterToCurrentTime}"
-							></d2l-video-producer-chapters>
-						</d2l-tab-panel>
-						<d2l-tab-panel
-							no-padding
-							text=${this.localize('closedCaptions')}
-						>
-							<d2l-video-producer-captions
-								.captions="${this._captions}"
-								@captions-changed=${this._handleCaptionsChanged}
-								.defaultLanguage="${this._defaultLanguage}"
-								?loading="${this._captionsLoading}"
-								.selectedLanguage="${this._selectedLanguage}"
-							></d2l-video-producer-captions>
-						</d2l-tab-panel>
-					</d2l-tabs>
+							<d2l-menu label="${this.localize('revisions')}">
+								${this._revisionsLatestToOldest ? this._revisionsLatestToOldest.map((revision, index) => html`<d2l-menu-item data-revision-index="${index}" text="${this.localize('revisionNumber', { number: this._revisionsLatestToOldest.length - index })}"></d2l-menu-item>`) : ''}
+							</d2l-menu>
+						</d2l-dropdown-menu>
+					</d2l-dropdown-button-subtle>
+					<d2l-button
+						class="d2l-video-producer-controls-save-button"
+						@click="${this._handleSave}"
+						?disabled="${this._saving || this._finishing}"
+						text="${this.localize('saveDraft')}"
+					>
+						${this.localize('saveDraft')}
+					</d2l-button>
+					<d2l-button
+						?disabled="${this._saving || this._finishing}"
+						@click="${this._handleFinish}"
+						class="d2l-video-producer-controls-publish-button"
+						primary
+					><div class="d2l-video-producer-controls-publishing" style="${!this._finishing ? 'display: none' : ''}">
+							<d2l-loading-spinner size="20"></d2l-loading-spinner>
+							${this.localize('finishing')}
+						</div>
+						<div ?hidden="${this._finishing}">
+							${this.localize('finish')}
+						</div>
+					</d2l-button>
 				</div>
-				<div class="d2l-video-producer-timeline">
-					<div id="canvas-container">
-						<canvas height="${constants.CANVAS_HEIGHT}px" width="${constants.CANVAS_WIDTH}px" id="timeline-canvas"></canvas>
-						<div id="zoom-multiplier" style=${styleMap(zoomMultiplierStyleMap)}>
-							${this._getZoomMultiplierDisplay()}
+				<div class="d2l-video-producer-main-content">
+					<div class="d2l-video-producer-video-controls">
+						<d2l-labs-media-player
+							@pause="${this._pauseUpdatingVideoTime}"
+							@play="${this._startUpdatingVideoTime}"
+							@seeking="${this._updateVideoTime}"
+							controls
+							src="${this._src}"
+							@trackloaded="${this._handleTrackLoaded}"
+						>
+							${this._captionsUrl ? html`<track src="${this._captionsUrl}" srclang="${this._selectedLanguage.code}" label="${this._selectedLanguage.name}" kind="captions">` : ''}
+						</d2l-labs-media-player>
+						<d2l-tabs>
+							<d2l-tab-panel
+								selected
+								no-padding
+								text=${this.localize('tableOfContents')}
+							>
+								<d2l-video-producer-chapters
+									.chapters="${this._metadata && this._metadata.chapters}"
+									.defaultLanguage="${this._defaultLanguage}"
+									.selectedLanguage="${this._selectedLanguage}"
+									?loading="${this._loading}"
+									@add-new-chapter="${this._addNewChapter}"
+									@chapters-changed="${this._handleChaptersChanged}"
+									@set-chapter-to-current-time="${this._setChapterToCurrentTime}"
+								></d2l-video-producer-chapters>
+							</d2l-tab-panel>
+							<d2l-tab-panel
+								no-padding
+								text=${this.localize('closedCaptions')}
+							>
+								<d2l-video-producer-captions
+									.captions="${this._captions}"
+									@captions-changed=${this._handleCaptionsChanged}
+									.defaultLanguage="${this._defaultLanguage}"
+									?loading="${this._captionsLoading}"
+									.selectedLanguage="${this._selectedLanguage}"
+								></d2l-video-producer-captions>
+							</d2l-tab-panel>
+						</d2l-tabs>
+					</div>
+					<div class="d2l-video-producer-timeline">
+						<div id="canvas-container">
+							<canvas height="${constants.CANVAS_HEIGHT}px" width="${constants.CANVAS_WIDTH}px" id="timeline-canvas"></canvas>
+							<div id="zoom-multiplier" style=${styleMap(zoomMultiplierStyleMap)}>
+								${this._getZoomMultiplierDisplay()}
+							</div>
+						</div>
+						<div class="d2l-video-producer-timeline-controls">
+							<d2l-button-icon @click="${this._changeToSeekMode}" text="${this.localize(constants.CONTROL_MODES.SEEK)}" icon="tier1:divider-solid"></d2l-button-icon>
+							<d2l-button-icon @click="${this._changeToMarkMode}" text="${this.localize(constants.CONTROL_MODES.MARK)}" icon="tier1:edit"></d2l-button-icon>
+							<d2l-button-icon @click="${this._changeToCutMode}" text="${this.localize(constants.CONTROL_MODES.CUT)}" icon="html-editor:cut"></d2l-button-icon>
 						</div>
 					</div>
-					<div class="d2l-video-producer-timeline-controls">
-						<d2l-button-icon @click="${this._changeToSeekMode}" text="${this.localize(constants.CONTROL_MODES.SEEK)}" icon="tier1:divider-solid"></d2l-button-icon>
-						<d2l-button-icon @click="${this._changeToMarkMode}" text="${this.localize(constants.CONTROL_MODES.MARK)}" icon="tier1:edit"></d2l-button-icon>
-						<d2l-button-icon @click="${this._changeToCutMode}" text="${this.localize(constants.CONTROL_MODES.CUT)}" icon="html-editor:cut"></d2l-button-icon>
-					</div>
+					<d2l-alert-toast type="${this.errorOccurred ? 'error' : 'default'}">
+						${this._alertMessage}
+					</d2l-alert-toast>
+					<d2l-dialog-confirm
+						class="d2l-video-producer-dialog-confirm-revision-change"
+						text="${this.localize('confirmRevisionChangeWithUnsavedData')}"
+					>
+						<d2l-button
+							@click="${this._loadNewlySelectedRevision}"
+							data-dialog-action="yes"
+							slot="footer"
+						>
+							${this.localize('yes')}
+						</d2l-button>
+						<d2l-button
+							data-dialog-action="no"
+							primary
+							slot="footer"
+						>
+							${this.localize('no')}
+						</d2l-button>
+					</d2l-dialog-confirm>
 				</div>
-				<d2l-alert-toast type="${this.errorOccurred ? 'error' : 'default'}">
-					${this._alertMessage}
-				</d2l-alert-toast>
-				<d2l-dialog-confirm
-					class="d2l-capture-central-producer-dialog-confirm-revision-change"
-					text="${this.localize('confirmRevisionChangeWithUnsavedData')}"
-				>
-					<d2l-button
-						@click="${this._loadNewlySelectedRevision}"
-						data-dialog-action="yes"
-						slot="footer"
-					>
-						${this.localize('yes')}
-					</d2l-button>
-					<d2l-button
-						data-dialog-action="no"
-						primary
-						slot="footer"
-					>
-						${this.localize('no')}
-					</d2l-button>
-				</d2l-dialog-confirm>
 			</div>
 		`;
 	}
@@ -632,6 +730,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				// If mark was just removed (=== null), a cut may have changed
 				if ((this._draggingMark || this._currentMark === null) && this._cutTimeChanged) {
 					this._fireMetadataChangedEvent();
+					this._unsavedChanges = true;
 				}
 				this._cutTimeChanged = false;
 				this._draggingMark = false;
@@ -791,10 +890,91 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	//#endregion
 	_handleCaptionsChanged(e) {
 		this._captions = e.detail.captions;
+		this._captionsLoading = false;
 	}
 
 	_handleChaptersChanged(e) {
 		this._fireMetadataChangedEvent({ chapters: e.detail.chapters });
+		this._unsavedChanges = true;
+	}
+
+	async _handleFinish() {
+		this._finishing = true;
+
+		await this.apiClient.updateMetadata({
+			contentId: this._content.id,
+			metadata: this._metadata,
+			revisionId: 'latest',
+		});
+		const { id, ...revision } = this._revisionsLatestToOldest[0];
+		let newRevision;
+		try {
+			newRevision = await this.apiClient.createRevision({
+				contentId: this._content.id,
+				body: {
+					title: this._content.name,
+					extension: revision.extension,
+					sourceFormat: 'hd',
+					formats: ['ld'],
+				},
+				sourceRevisionId: id
+			});
+			await this.apiClient.processRevision({
+				contentId: this._content.id,
+				revisionId: newRevision.id,
+				body: { sourceRevisionId: id }
+			});
+			this._unsavedChanges = false;
+		} catch (error) {
+			if (newRevision) {
+				await this.apiClient.deleteRevision({
+					contentId: this._content.id, revisionId: newRevision.id
+				});
+			}
+			this._errorOccurred = true;
+		}
+		this._alertMessage = this._errorOccurred
+			? this.localize('publishError')
+			: this.localize('publishSuccess');
+		this.shadowRoot.querySelector('d2l-alert-toast').open = true;
+		this._finishing = false;
+	}
+
+	async _handleSave() {
+		this._saving = true;
+		try {
+			await this.apiClient.updateMetadata({
+				contentId: this._content.id,
+				draft: true,
+				metadata: this._metadata,
+				revisionId: 'latest',
+			});
+			this._unsavedChanges = false;
+		} catch (error) {
+			this._errorOccurred = true;
+		}
+		this._alertMessage = this._errorOccurred
+			? this.localize('saveError')
+			: this.localize('saveSuccess');
+		this.shadowRoot.querySelector('d2l-alert-toast').open = true;
+		this._saving = false;
+	}
+
+	_handleSelectedLanguageChanged(e) {
+		this._selectedLanguage = e.detail.selectedLanguage;
+	}
+
+	async _handleSelectedRevisionChanged(e) {
+		const newlySelectedRevisionIndex = Number.parseInt(e.target.dataset.revisionIndex);
+		if (newlySelectedRevisionIndex === this._selectedRevisionIndex) {
+			return;
+		}
+		this._revisionIndexToLoad = newlySelectedRevisionIndex;
+		if (this._unsavedChanges) {
+			this.shadowRoot.querySelector('.d2l-video-producer-dialog-confirm-revision-change').open();
+		} else {
+			this._loadNewlySelectedRevision();
+		}
 	}
 
 	_handleTrackLoaded() {
@@ -826,16 +1006,22 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	async _loadCaptions(revision, locale) {
 		this._captionsLoading = true;
 		try {
-			this._captionsUrl = await this._apiClient.getCaptions({
+			const res = await this.apiClient.getCaptionsUrl({
 				contentId: this._content.id,
 				revisionId: revision,
 				locale,
 				draft: true,
 			});
+			this._captionsUrl = res.captionsUrl;
 		} catch (error) {
-			const language = this._languages.find(lang => lang.code === locale);
-			this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
-			this.shadowRoot.querySelector('d2l-alert-toast').open = true;
+			if (error.message === 'Not Found') {
+				this._captionsUrl = '';
+				this._captionsLoading = false;
+			} else {
+				const language = this._languages.find(lang => lang.code === locale);
+				this._alertMessage = this.localize('loadCaptionsError', { language: language.name });
+				this.shadowRoot.querySelector('d2l-alert-toast').open = true;
+			}
 		}
 	}
 
@@ -847,6 +1033,18 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			&& this._selectedLanguage
 			&& this._selectedLanguage.code
 		);
+	}
+
+	async _loadNewlySelectedRevision() {
+		const revisionId = this._revisionsLatestToOldest[this._revisionIndexToLoad].id;
+		this._metadata = await this.apiClient.getMetadata({
+			contentId: this._content.id,
+			revisionId: revisionId,
+			draft: true
+		});
+		this._loadCaptions(revisionId, this._selectedLanguage.code);
+		this._selectedRevisionIndex = this._revisionIndexToLoad;
+		this._unsavedChanges = false;
 	}
 
 	_moveContentMarker(event) {
