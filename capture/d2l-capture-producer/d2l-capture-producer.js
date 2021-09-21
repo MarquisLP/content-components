@@ -292,15 +292,17 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				</div>
 				<div class="d2l-video-producer-main-content">
 					<div class="d2l-video-producer-video-controls">
+						<!-- crossorigin needs to be set in order for <track> elements to load sources from different origins. -->
 						<d2l-labs-media-player
+							controls
+							crossorigin="anonymous"
 							@pause="${this._pauseUpdatingVideoTime}"
 							@play="${this._startUpdatingVideoTime}"
 							@seeking="${this._updateVideoTime}"
-							controls
 							src="${this._src}"
 							@trackloaded="${this._handleTrackLoaded}"
 						>
-							${this._captionsUrl ? html`<track src="${this._captionsUrl}" srclang="${this._selectedLanguage.code}" label="${this._selectedLanguage.name}" kind="captions">` : ''}
+							${this._captionsUrl ? html`<track default src="${this._captionsUrl}" srclang="${this._formatCaptionsSrcLang()}" label="${this._selectedLanguage.name}" kind="subtitles">` : ''}
 						</d2l-labs-media-player>
 						<d2l-tabs>
 							<d2l-tab-panel
@@ -655,6 +657,16 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				detail: { cuts, chapters }
 			}
 		));
+	}
+
+	_formatCaptionsSrcLang() {
+		// Some of the 5-character language codes we receive from the D2L locales endpoint are all lowercase, e.g. "en-us".
+		// We need to convert them to mixed case ("en-US") in order to match the spec for <track> element's "srclang" attribute.
+		// If the format is incorrect, <track> will not process the captions into cue objects.
+		if (this._selectedLanguage.code.length === 5) {
+			return `${this._selectedLanguage.code.slice(0, 2)}-${this._selectedLanguage.code.slice(3).toUpperCase()}`;
+		}
+		return this._selectedLanguage.code;
 	}
 
 	_getCutModeHandlers() {

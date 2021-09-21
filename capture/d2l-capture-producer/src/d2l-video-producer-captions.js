@@ -192,7 +192,7 @@ customElements.define('d2l-video-producer-captions-cues-list-item', CaptionsCueL
 class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
-			captions: { type: Array },
+			captions: { type: Object },
 			defaultLanguage: { type: Object },
 			loading: { type: Boolean },
 			selectedLanguage: { type: Object },
@@ -364,9 +364,9 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 	_renderCuesList() {
 		return html`
 			<div class="d2l-video-producer-captions-cues-list">
-				${this.captions.slice(0, this._numberOfVisibleCuesInList).map(captionCue => html`
+				${[...Array(this._numberOfVisibleCuesInList).keys()].map(index => html`
 					<d2l-video-producer-captions-cues-list-item
-						captions-cue=${JSON.stringify(captionCue)}
+						captions-cue=${this.captions[index]}
 					></d2l-video-producer-captions-cues-list-item>
 				`)}
 				<div class="d2l-video-producer-captions-cues-list-bottom"></div>
