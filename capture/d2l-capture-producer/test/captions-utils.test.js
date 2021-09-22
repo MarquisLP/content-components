@@ -1,4 +1,4 @@
-import { formatTimestampText, parseSrtFile, parseWebVttFile } from '../src/captions-utils.js';
+import { formatTimestampText, parseSrtFile } from '../src/captions-utils.js';
 import { assert } from '@open-wc/testing';
 
 describe('captions-utils.js', () => {
@@ -73,52 +73,6 @@ elit.`;
 				assert.fail('Did not throw an error');
 			} catch (error) {
 				assert.equal(error.message, 'srtParseError');
-			}
-		});
-	});
-
-	describe('parseWebVttFile', () => {
-		it('parses a valid WebVTT file into an array of JSON captions cue objects, sorted by start timestamp', () => {
-			const vttFileData = `WEBVTT
-
-00:01.000 --> 00:03.000
-<v Roger Bingham>We are
-in New York City
-
-00:06.000 --> 00:08.000
-<v Roger Bingham>from the American Museum of Natural History
-
-00:03.000 --> 00:06.000
-<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street
-
-00:08.000 --> 00:10.000
-<v Roger Bingham>And with me is Neil deGrasse Tyson`;
-			const expected = [
-				new VTTCue(1, 3, '<v Roger Bingham>We are\nin New York City'),
-				new VTTCue(3, 6, '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street'),
-				new VTTCue(6, 8, '<v Roger Bingham>from the American Museum of Natural History'),
-				new VTTCue(8, 10, '<v Roger Bingham>And with me is Neil deGrasse Tyson'),
-			];
-			const actual = parseWebVttFile(vttFileData);
-			// eslint-disable-next-line no-console
-			console.log(actual);
-			for (let i = 0; i < expected.length; i++) {
-				assert.equal(actual[i].constructor.name, 'VTTCue', `Incorrect object class for cue at index ${i}`);
-				assert.equal(actual[i].startTime, expected[i].startTime, `Incorrect start time for cue at index ${i}`);
-				assert.equal(actual[i].endTime, expected[i].endTime, `Incorrect end time for cue at index ${i}`);
-				assert.equal(actual[i].text, expected[i].text, `Incorrect text for cue at index ${i}`);
-			}
-		});
-
-		it('when given invalid WebVTT data, throws an error containing the name of a localized error string', () => {
-			const invalidVttFileData = `00:01.000 --> 00:03.000
-<v Roger Bingham>We are
-in New York City`;
-			try {
-				parseWebVttFile(invalidVttFileData);
-				assert.fail('Did not throw an error');
-			} catch (error) {
-				assert.equal(error.message, 'vttParseError');
 			}
 		});
 	});

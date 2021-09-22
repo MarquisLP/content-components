@@ -327,7 +327,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 							>
 								<d2l-video-producer-captions
 									.captions="${this._captions}"
-									@captions-changed=${this._handleCaptionsChanged}
+									@captions-uploaded=${this._handleCaptionsUploaded}
 									.defaultLanguage="${this._defaultLanguage}"
 									?loading="${this._captionsLoading}"
 									.selectedLanguage="${this._selectedLanguage}"
@@ -901,9 +901,10 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	}
 
 	//#endregion
-	_handleCaptionsChanged(e) {
-		this._captions = e.detail.captions;
-		this._captionsLoading = false;
+	_handleCaptionsUploaded(e) {
+		this._captionsLoading = true;
+		const localVttUrl = window.URL.createObjectURL(new Blob([e.detail.vttString], { type: 'text/vtt' }));
+		this._captionsUrl = localVttUrl;
 	}
 
 	_handleChaptersChanged(e) {
@@ -1029,6 +1030,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		} catch (error) {
 			if (error.message === 'Not Found') {
 				this._captionsUrl = '';
+				this._captions = [];
 				this._captionsLoading = false;
 			} else {
 				const language = this._languages.find(lang => lang.code === locale);

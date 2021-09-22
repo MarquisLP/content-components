@@ -8,7 +8,7 @@ import { css, html, LitElement } from 'lit-element/lit-element.js';
 import { inputStyles } from '@brightspace-ui/core/components/inputs/input-styles.js';
 import { InternalLocalizeMixin } from './internal-localize-mixin.js';
 import { labelStyles } from '@brightspace-ui/core/components/typography/styles.js';
-import { formatTimestampText, parseSrtFile, parseWebVttFile }  from './captions-utils.js';
+import { formatTimestampText, parseSrtFile }  from './captions-utils.js';
 import constants from './constants.js';
 
 class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
@@ -274,9 +274,9 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 		});
 	}
 
-	_dispatchCaptionsChanged(captions) {
-		this.dispatchEvent(new CustomEvent('captions-changed', {
-			detail: { captions },
+	_dispatchCaptionsUploaded(vttString) {
+		this.dispatchEvent(new CustomEvent('captions-uploaded', {
+			detail: { vttString },
 			composed: false
 		}));
 	}
@@ -311,11 +311,10 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			fileReader.addEventListener('load', event => {
 				try {
 					if (extension === 'vtt') {
-						const parsedCaptions = parseWebVttFile(event.target.result);
-						this._dispatchCaptionsChanged(parsedCaptions);
+						this._dispatchCaptionsUploaded(event.target.result);
 					} else {
 						const parsedCaptions = parseSrtFile(event.target.result);
-						this._dispatchCaptionsChanged(parsedCaptions);
+						this._dispatchCaptionsUploaded(parsedCaptions);
 					}
 				} catch (error) {
 					this._openAlertToast({type: 'critical', text: this.localize(error.message) });
