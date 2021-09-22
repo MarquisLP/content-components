@@ -1,4 +1,4 @@
-import { convertSrtTextToVttText, formatTimestampText } from '../src/captions-utils.js';
+import { convertSrtTextToVttText, convertTextTrackCueListToVttText, formatTimestampText } from '../src/captions-utils.js';
 import { assert } from '@open-wc/testing';
 
 describe('captions-utils.js', () => {
@@ -82,6 +82,33 @@ elit.`;
 			} catch (error) {
 				assert.equal(error.message, 'srtParseError');
 			}
+		});
+	});
+
+	describe('convertTextTrackCueListToVttText', () => {
+		it('converts a TextTrackCueList into valid WebVTT text', () => {
+			// TextTrack and TextTrackCueList can't be instantiated outside of a DOM context,
+			// so we use a shim for TextTrackCueList instead.
+			const vttTrackCueList = {
+				length: 3,
+				'0': new VTTCue(0, 1, 'Message 1'),
+				'1': new VTTCue(1, 3.6, 'Message 2'),
+				'2': new VTTCue(5.123, 3902, 'Message 3\nExtra Line'),
+			};
+			const expected = `WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+Message 1
+
+00:00:01.000 --> 00:00:03.600
+Message 2
+
+00:00:05.123 --> 01:05:02.000
+Message 3
+Extra Line
+`;
+			const actual = convertTextTrackCueListToVttText(vttTrackCueList);
+			assert.equal(actual, expected);
 		});
 	});
 });

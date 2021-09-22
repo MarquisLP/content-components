@@ -92,6 +92,17 @@ export default class ContentServiceClient {
 		});
 	}
 
+	updateCaptions({ contentId, revisionId, draft = false, locale, captionsVttText }) {
+		return this._fetch({
+			path: `/api/${this.tenantId}/content/${contentId}/revisions/${revisionId}/captions/${locale}`,
+			method: 'PUT',
+			query: { draft },
+			body: captionsVttText,
+			contentType: 'text/vtt',
+			extractJsonBody: false // The PUT captions route returns no content (status 204)
+		});
+	}
+
 	updateContent({id, body}) {
 		return this._fetch({
 			path: `/api/${this.tenantId}/content/${id}`,
@@ -123,17 +134,18 @@ export default class ContentServiceClient {
 		method = 'GET',
 		query,
 		body,
+		contentType = 'application/json',
 		extractJsonBody = true,
 		headers = new Headers()
 	}) {
-		if (body) {
-			headers.append('Content-Type', 'application/json');
+		if (body && contentType) {
+			headers.append('Content-Type', contentType);
 		}
 
 		const requestInit = {
 			method,
 			...body && {
-				body: JSON.stringify(body)
+				body: contentType === 'application/json' ? JSON.stringify(body) : body
 			},
 			headers
 		};

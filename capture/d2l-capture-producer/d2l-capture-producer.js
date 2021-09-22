@@ -23,6 +23,7 @@ import { selectStyles } from '@brightspace-ui/core/components/inputs/input-selec
 import { styleMap } from 'lit-html/directives/style-map';
 import { Timeline } from './src/timeline';
 import UserBrightspaceClient from './src/user-brightspace-client.js';
+import { convertTextTrackCueListToVttText } from './src/captions-utils.js';
 
 class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
@@ -37,9 +38,9 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			endpoint: { type: String },
 			_errorOccurred: { type: Boolean, attribute: false },
 			_finishing: { type: Boolean, attribute: false },
-			_languages: { type: String, attribute: false },
 			_loading: { type: Boolean, attribute: false },
 			_metadata: { type: Object, attribute: false },
+			_metadataLoading: { type: Boolean, attribute: false },
 			_revisionIndexToLoad: { type: Number, attribute: false },
 			_revisionsLatestToOldest: { type: Object, attribute: false },
 			_saving: { type: Boolean, attribute: false },
@@ -191,6 +192,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		this._captionsLoading = true;
 
 		this._metadata = { cuts: [], chapters: [] };
+		this._metadataLoading = true;
 		this._src = '';
 		this._defaultLanguage = {};
 		this._selectedLanguage = {};
@@ -213,12 +215,8 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			}
 			this._src = (await this.apiClient.getSignedUrl(this.contentId)).value;
 			await this._setupLanguages();
+			this._loadMetadata('latest');
 			this._loadCaptions('latest', this._selectedLanguage.code);
-			this._metadata = await this.apiClient.getMetadata({
-				contentId: this.contentId,
-				revisionId: 'latest',
-				draft: true
-			});
 		});
 	}
 
@@ -251,7 +249,8 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		};
 		return html`
 			<div class="d2l-video-producer">
-				<div class="d2l-video-producer-top-bar-controls">
+				${this._loading ? html`<d2l-loading-spinner size=150></d2l-loading-spinner>` : ''}
+				<div class="d2l-video-producer-top-bar-controls" style="visibility: ${this._loading ? 'hidden' : 'visible'};">
 					<d2l-labs-video-producer-language-selector
 						.languages="${this._languages}"
 						.selectedLanguage="${this._selectedLanguage}"
@@ -291,7 +290,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 						</div>
 					</d2l-button>
 				</div>
-				<div class="d2l-video-producer-main-content">
+				<div class="d2l-video-producer-main-content" style="visibility: ${this._loading ? 'hidden' : 'visible'};">
 					<div class="d2l-video-producer-video-controls">
 						<!-- crossorigin needs to be set in order for <track> elements to load sources from different origins. -->
 						<d2l-labs-media-player
@@ -315,7 +314,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 									.chapters="${this._metadata && this._metadata.chapters}"
 									.defaultLanguage="${this._defaultLanguage}"
 									.selectedLanguage="${this._selectedLanguage}"
-									?loading="${this._loading}"
+									?loading="${this._metadataLoading}"
 									@add-new-chapter="${this._addNewChapter}"
 									@chapters-changed="${this._handleChaptersChanged}"
 									@set-chapter-to-current-time="${this._setChapterToCurrentTime}"
@@ -903,6 +902,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	//#endregion
 	_handleCaptionsUploaded(e) {
 		this._captionsLoading = true;
+		this._unsavedChanges = true;
 		const localVttUrl = window.URL.createObjectURL(new Blob([e.detail.vttString], { type: 'text/vtt' }));
 		this._captionsUrl = localVttUrl;
 	}
@@ -919,6 +919,12 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			contentId: this._content.id,
 			metadata: this._metadata,
 			revisionId: 'latest',
+		});
+		await this.apiClient.updateCaptions({
+			contentId: this._content.id,
+			captionsVttText: convertTextTrackCueListToVttText(this._captions),
+			revisionId: 'latest',
+			locale: this._selectedLanguage.code
 		});
 		const { id, ...revision } = this._revisionsLatestToOldest[0];
 		let newRevision;
@@ -962,6 +968,13 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				draft: true,
 				metadata: this._metadata,
 				revisionId: 'latest',
+			});
+			await this.apiClient.updateCaptions({
+				contentId: this._content.id,
+				draft: true,
+				captionsVttText: convertTextTrackCueListToVttText(this._captions),
+				revisionId: 'latest',
+				locale: this._selectedLanguage.code
 			});
 			this._unsavedChanges = false;
 		} catch (error) {
@@ -1042,21 +1055,25 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 	get _loading() {
 		return !(
-			this._metadata
-			&& this._captions
-			&& this._videoLoaded
+			this._videoLoaded
 			&& this._selectedLanguage
 			&& this._selectedLanguage.code
 		);
 	}
 
-	async _loadNewlySelectedRevision() {
-		const revisionId = this._revisionsLatestToOldest[this._revisionIndexToLoad].id;
+	async _loadMetadata(revisionId) {
+		this._metadataLoading = true;
 		this._metadata = await this.apiClient.getMetadata({
 			contentId: this._content.id,
-			revisionId: revisionId,
+			revisionId,
 			draft: true
 		});
+		this._metadataLoading = false;
+	}
+
+	async _loadNewlySelectedRevision() {
+		const revisionId = this._revisionsLatestToOldest[this._revisionIndexToLoad].id;
+		this._loadMetadata(revisionId);
 		this._loadCaptions(revisionId, this._selectedLanguage.code);
 		this._selectedRevisionIndex = this._revisionIndexToLoad;
 		this._unsavedChanges = false;
