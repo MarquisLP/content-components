@@ -40,6 +40,24 @@ function convertSrtTextToVttText(srtText) {
 }
 
 /**
+ * Converts a TextTrackCueList into raw WebVTT text
+ * @param {TextTrackCueList} textTrackCueList An instance of TextTrackCueList
+ * @returns A WebVTT string containing the data from the TextTrackCueList
+ */
+function convertTextTrackCueListToVttText(textTrackCueList) {
+	const jsonCues = [...Array(textTrackCueList.length).keys()].map(index => {
+		return {
+			start: textTrackCueList[index].startTime,
+			end: textTrackCueList[index].endTime,
+			text: textTrackCueList[index].text,
+			identifier: '',
+			styles: ''
+		};
+	});
+	return compileWebVTT({ cues: jsonCues, valid: true });
+}
+
+/**
  * Takes a number of seconds and formats into a timestamp string of the form hh:mm:ss.sss
  * @param {number} timestampInSeconds The timestamp value that will be formatted, in seconds
  * @returns A timestamp string formatted as hh:mm:ss.sss
@@ -64,5 +82,6 @@ function formatTimestampText(timestampInSeconds) {
 
 export {
 	formatTimestampText,
-	convertSrtTextToVttText
+	convertSrtTextToVttText,
+	convertTextTrackCueListToVttText
 };

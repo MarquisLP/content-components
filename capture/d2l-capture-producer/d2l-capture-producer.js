@@ -23,6 +23,7 @@ import { selectStyles } from '@brightspace-ui/core/components/inputs/input-selec
 import { styleMap } from 'lit-html/directives/style-map';
 import { Timeline } from './src/timeline';
 import UserBrightspaceClient from './src/user-brightspace-client.js';
+import { convertTextTrackCueListToVttText } from './src/captions-utils.js';
 
 class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
@@ -962,6 +963,13 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				draft: true,
 				metadata: this._metadata,
 				revisionId: 'latest',
+			});
+			await this.apiClient.updateCaptions({
+				contentId: this._content.id,
+				draft: true,
+				captionsVttText: convertTextTrackCueListToVttText(this._captions),
+				revisionId: 'latest',
+				locale: this._selectedLanguage.code
 			});
 			this._unsavedChanges = false;
 		} catch (error) {
