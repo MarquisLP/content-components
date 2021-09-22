@@ -1,16 +1,23 @@
 import parseSRT from 'parse-srt/src/parse-srt.js';
+import { compile as compileWebVTT } from './node-vtt-compiler.js';
 
 /**
  * Takes JSON output from parse-srt and formats each cue object into
- * a VTTCue object.
+ * a JSON VTT cue object.
  * @param {array} jsonSrtCues An array of captions cues JSON objects from parse-srt
- * @returns An array of VTTCue objects
+ * @returns An array of JSON objects containing the following VTT cue properties: start, end, text, identifier
  */
-function _convertJsonSrtCuesToVttCues(jsonSrtCues) {
+function _convertJsonSrtCuesToVttJsonCues(jsonSrtCues) {
 	return jsonSrtCues.map(jsonSrtCue => {
 		// parse-srt inserts <br /> for line breaks, but WebVTT uses \n.
 		const convertedText = jsonSrtCue.text.replace('<br />', '\n');
-		return new VTTCue(jsonSrtCue.start, jsonSrtCue.end, convertedText);
+		return {
+			start: jsonSrtCue.start,
+			end: jsonSrtCue.end,
+			text: convertedText,
+			identifier: '',
+			styles: ''
+		};
 	});
 }
 
@@ -38,23 +45,24 @@ function formatTimestampText(timestampInSeconds) {
 }
 
 /**
- * Parses SRT text data into WebVTT objects.
- * @param {string} rawSrtData The text data from an SRT file
- * @returns An array of VTTCue objects, sorted by ascending timestamp
+ * Converts SRT text into WebVTT text.
+ * @param {string} srtText Valid SRT text data
+ * @returns A WebVTT string, containing the cues from the SRT text sorted by ascending timestamp
  */
-function parseSrtFile(rawSrtData) {
+function convertSrtTextToVttText(srtText) {
 	let jsonSrtCues;
 	try {
-		jsonSrtCues = parseSRT(rawSrtData);
+		jsonSrtCues = parseSRT(srtText);
 	} catch (error) {
 		throw new Error('srtParseError');
 	}
-	const vttCues = _convertJsonSrtCuesToVttCues(jsonSrtCues);
-	vttCues.sort((cue1, cue2) => cue1.startTime - cue2.startTime);
-	return vttCues;
+
+	jsonSrtCues.sort((cue1, cue2) => cue1.start - cue2.start);
+	const vttCues = _convertJsonSrtCuesToVttJsonCues(jsonSrtCues);
+	return compileWebVTT({ cues: vttCues, valid: true });
 }
 
 export {
 	formatTimestampText,
-	parseSrtFile
+	convertSrtTextToVttText
 };

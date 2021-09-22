@@ -8,7 +8,7 @@ import { css, html, LitElement } from 'lit-element/lit-element.js';
 import { inputStyles } from '@brightspace-ui/core/components/inputs/input-styles.js';
 import { InternalLocalizeMixin } from './internal-localize-mixin.js';
 import { labelStyles } from '@brightspace-ui/core/components/typography/styles.js';
-import { formatTimestampText, parseSrtFile }  from './captions-utils.js';
+import { formatTimestampText, convertSrtTextToVttText }  from './captions-utils.js';
 import constants from './constants.js';
 
 class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
@@ -313,8 +313,8 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 					if (extension === 'vtt') {
 						this._dispatchCaptionsUploaded(event.target.result);
 					} else {
-						const parsedCaptions = parseSrtFile(event.target.result);
-						this._dispatchCaptionsUploaded(parsedCaptions);
+						const vttText = convertSrtTextToVttText(event.target.result);
+						this._dispatchCaptionsUploaded(vttText);
 					}
 				} catch (error) {
 					this._openAlertToast({type: 'critical', text: this.localize(error.message) });
