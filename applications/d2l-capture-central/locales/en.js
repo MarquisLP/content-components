@@ -15,7 +15,6 @@ export const val = {
 	chatLog: 'Chat Log',
 	clear: 'Clear',
 	clips: 'Clips',
-	confirmRevisionChangeWithUnsavedData: 'The current revision has unsaved changes. If you switch to another revision, these changes will be discarded. Do you wish to proceed?',
 	close: 'Close',
 	copiedToClipboard: 'Copied to clipboard',
 	copyContents: 'Copy Contents',

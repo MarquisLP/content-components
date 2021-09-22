@@ -11,6 +11,7 @@ export const val = {
 	captionsReadError: 'Could not read captions file. It might be corrupted.',
 	chapterTitle: 'Chapter title',
 	closedCaptions: 'Closed Captions',
+	confirmRevisionChangeWithUnsavedData: 'The current revision has unsaved changes. If you switch to another revision, these changes will be discarded. Do you wish to proceed?',
 	cut: 'Cut',
 	delete: 'Delete',
 	deleteCaptionsCue: 'Delete this captions cue',
