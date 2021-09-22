@@ -57,6 +57,17 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 	static get styles() {
 		return [selectStyles, css`
+			.d2l-video-producer-loading-container {
+				align-items: center;
+				display: flex;
+				height: 70%;
+				justify-content: center;
+				overflow-y: hidden;
+				position: absolute;
+				width: 100%;
+				z-index: 99;
+			}
+
 			.d2l-video-producer-top-bar-controls {
 				align-items: center;
 				display: flex;
@@ -83,12 +94,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 			.d2l-video-producer-controls-publish-button d2l-loading-spinner {
 				margin-right: 5px;
-			}
-
-			d2l-loading-spinner {
-				display: flex;
-				margin: auto;
-				margin-top: 200px;
 			}
 
 			.d2l-video-producer-main-content {
@@ -249,7 +254,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		};
 		return html`
 			<div class="d2l-video-producer">
-				${this._loading ? html`<d2l-loading-spinner size=150></d2l-loading-spinner>` : ''}
+				${this._loading ? html`<div class="d2l-video-producer-loading-container"><d2l-loading-spinner size=150></d2l-loading-spinner></div>` : ''}
 				<div class="d2l-video-producer-top-bar-controls" style="visibility: ${this._loading ? 'hidden' : 'visible'};">
 					<d2l-video-producer-language-selector
 						?disabled="${this._saving || this._finishing}"
