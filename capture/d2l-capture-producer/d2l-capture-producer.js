@@ -192,6 +192,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 		this._metadata = { cuts: [], chapters: [] };
 		this._src = '';
+		this._defaultLanguage = {};
 		this._selectedLanguage = {};
 		this._videoLoaded = false;
 	}
