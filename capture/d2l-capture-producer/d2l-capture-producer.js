@@ -908,7 +908,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	}
 
 	_handleChaptersChanged(e) {
-		this._fireMetadataChangedEvent({ chapters: e.detail.chapters });
+		this._metadata = { ...this._metadata, chapters: e.detail.chapters };
 		this._unsavedChanges = true;
 	}
 
