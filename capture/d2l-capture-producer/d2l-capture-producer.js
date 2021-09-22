@@ -334,7 +334,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 							</d2l-tab-panel>
 						</d2l-tabs>
 					</div>
-					<div class="d2l-video-producer-timeline">
+					<div class="d2l-video-producer-timeline" style="visibility: ${this._metadataLoading ? 'hidden' : 'visible'};">
 						<div id="canvas-container">
 							<canvas height="${constants.CANVAS_HEIGHT}px" width="${constants.CANVAS_WIDTH}px" id="timeline-canvas"></canvas>
 							<div id="zoom-multiplier" style=${styleMap(zoomMultiplierStyleMap)}>
@@ -396,6 +396,9 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			cut.removeFromTimeline();
 			this._stage.removeChild(cut.displayObject);
 			this._stage.update();
+
+			this._updateCutsInMetadata();
+			this._unsavedChanges = true;
 		});
 
 		cut.displayObject = displayObject;
@@ -425,6 +428,12 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 			if (cutEndingAtMark) this._updateCutOnStage(cutEndingAtMark);
 
+			if (cutStartingAtMark || cutEndingAtMark) {
+				this._updateCutsInMetadata();
+				this._unsavedChanges = true;
+				console.log(this._metadata);
+			}
+
 			this._stage.update();
 		});
 
@@ -445,6 +454,12 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				if (cutEndingAtMark) this._updateCutOnStage(cutEndingAtMark);
 
 				if (cutStartingAtMark) this._updateCutOnStage(cutStartingAtMark);
+
+				if (cutStartingAtMark || cutEndingAtMark) {
+					this._updateCutsInMetadata();
+					this._unsavedChanges = true;
+					console.log(this._metadata);
+				}
 			}
 			this._draggingMark = true;
 		});
@@ -649,16 +664,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		));
 	}
 
-	_fireMetadataChangedEvent({ cuts = this._timeline.getCuts(), chapters = this._metadata.chapters } = {}) {
-		this.dispatchEvent(new CustomEvent(
-			'metadata-changed',
-			{
-				composed: false,
-				detail: { cuts, chapters }
-			}
-		));
-	}
-
 	_formatCaptionsSrcLang() {
 		// Some of the 5-character language codes we receive from the D2L locales endpoint are all lowercase, e.g. "en-us".
 		// We need to convert them to mixed case ("en-US") in order to match the spec for <track> element's "srclang" attribute.
@@ -696,7 +701,11 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 				const cut = this._timeline.addCutAtPoint(pixelsAlongTimeline);
 
-				if (cut) this._addCutToStage(cut);
+				if (cut) {
+					this._updateCutsInMetadata();
+					this._unsavedChanges = true;
+					this._addCutToStage(cut);
+				}
 			},
 			timelinePressMove: () => {},
 			timelinePressUp: () => {},
@@ -729,19 +738,26 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 				const returnValue = this._timeline.addMarkAtPoint(pixelsAlongTimeline);
 
-				if (!returnValue) return;
+				if (!returnValue) {
+					this._currentMark = null;
+					return;
+				}
 
 				const { mark, cut } = returnValue;
 
 				this._addMarkToStage(mark);
 
-				if (cut) this._updateCutOnStage(cut);
+				if (cut) {
+					this._updateCutOnStage(cut);
+					this._updateCutsInMetadata();
+					this._unsavedChanges = true;
+				}
 			},
 			timelinePressMove: () => {},
 			timelinePressUp: () => {
 				// If mark was just removed (=== null), a cut may have changed
 				if ((this._draggingMark || this._currentMark === null) && this._cutTimeChanged) {
-					this._fireMetadataChangedEvent();
+					this._updateCutsInMetadata();
 					this._unsavedChanges = true;
 				}
 				this._cutTimeChanged = false;
@@ -978,6 +994,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			});
 			this._unsavedChanges = false;
 		} catch (error) {
+			console.log(error);
 			this._errorOccurred = true;
 		}
 		this._alertMessage = this._errorOccurred
@@ -1068,6 +1085,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			revisionId,
 			draft: true
 		});
+		this._resetTimelineWithNewCuts(this._metadata.cuts);
 		this._metadataLoading = false;
 	}
 
@@ -1289,6 +1307,13 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		cut.displayObject.graphics.clear().beginFill(constants.COLOURS.CUT).drawRect(0, 0, width, this._getTimelineHeight());
 
 		this._stage.update();
+	}
+
+	_updateCutsInMetadata() {
+		// Remove object references to prevent 'cyclic object value' errors when saving metadata.
+		// eslint-disable-next-line no-unused-vars
+		const cuts = this._timeline.getCuts().map(({timeline, displayObject, ...cut}) => cut);
+		this._metadata = { ...this._metadata, cuts };
 	}
 
 	_updateMarkOnStage(mark) {
