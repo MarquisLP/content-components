@@ -920,6 +920,12 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			metadata: this._metadata,
 			revisionId: 'latest',
 		});
+		await this.apiClient.updateCaptions({
+			contentId: this._content.id,
+			captionsVttText: convertTextTrackCueListToVttText(this._captions),
+			revisionId: 'latest',
+			locale: this._selectedLanguage.code
+		});
 		const { id, ...revision } = this._revisionsLatestToOldest[0];
 		let newRevision;
 		try {
