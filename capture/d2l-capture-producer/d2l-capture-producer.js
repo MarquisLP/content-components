@@ -904,6 +904,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	//#endregion
 	_handleCaptionsUploaded(e) {
 		this._captionsLoading = true;
+		this._unsavedChanges = true;
 		const localVttUrl = window.URL.createObjectURL(new Blob([e.detail.vttString], { type: 'text/vtt' }));
 		this._captionsUrl = localVttUrl;
 	}
