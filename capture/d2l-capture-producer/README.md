@@ -76,12 +76,14 @@ const languages = [
 ];
 let selectedLanguage = { code: 'fr-fr', name: 'French' };
 const handleSelectedLanguageChanged = e => (selectedLanguage = e.detail.selectedLanguage);
+const disabled = false;
 
 class MyComponent {
 	// ...
 	render() {
 		return html`
 			<d2l-video-producer-language-selector
+				?disabled="${disabled}"
 				.languages="${languages}"
 				.selectedLanguage="${selectedLanguage}"
 				@selected-language-changed="${handleSelectedLanguageChanged}"
@@ -97,6 +99,7 @@ class MyComponent {
 |--|--|--|
 | .languages | Object | An array of objects representing the available languages to select. Each language object should have two properties: `code` and `name`. |
 | .selectedLanguage | Object | An object representing the currently selected language. Should have two properties: `code` and `name`. |
+| .disabled | Boolean | Enables or disables the language dropdown button. |
 
 **Events:**
 
