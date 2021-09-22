@@ -1,6 +1,5 @@
 import { formatTimestampText, parseSrtFile, parseWebVttFile } from '../src/captions-utils.js';
 import { assert } from '@open-wc/testing';
-import sinon from 'sinon';
 
 describe('captions-utils.js', () => {
 	describe('formatTimestampText', () => {
@@ -94,31 +93,15 @@ in New York City
 
 00:08.000 --> 00:10.000
 <v Roger Bingham>And with me is Neil deGrasse Tyson`;
-
-			const vttParserMock = {};
-			vttParserMock.parse = sinon.spy();
-			vttParserMock.flush = sinon.stub();
-			vttParserMock.flush.callsFake(() => {
-				if (vttParserMock.parse.calledWith(vttFileData)) {
-					const unsortedCues = [
-						new VTTCue(1, 3, '<v Roger Bingham>We are\nin New York City'),
-						new VTTCue(6, 8, '<v Roger Bingham>from the American Museum of Natural History'),
-						new VTTCue(3, 6, '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street'),
-						new VTTCue(8, 10, '<v Roger Bingham>And with me is Neil deGrasse Tyson'),
-					];
-					unsortedCues.forEach(cue => {
-						vttParserMock.oncue(cue);
-					});
-				}
-			});
-
 			const expected = [
 				new VTTCue(1, 3, '<v Roger Bingham>We are\nin New York City'),
 				new VTTCue(3, 6, '<v Roger Bingham>We’re actually at the Lucern Hotel, just down the street'),
 				new VTTCue(6, 8, '<v Roger Bingham>from the American Museum of Natural History'),
 				new VTTCue(8, 10, '<v Roger Bingham>And with me is Neil deGrasse Tyson'),
 			];
-			const actual = parseWebVttFile(vttParserMock, vttFileData);
+			const actual = parseWebVttFile(vttFileData);
+			// eslint-disable-next-line no-console
+			console.log(actual);
 			for (let i = 0; i < expected.length; i++) {
 				assert.equal(actual[i].constructor.name, 'VTTCue', `Incorrect object class for cue at index ${i}`);
 				assert.equal(actual[i].startTime, expected[i].startTime, `Incorrect start time for cue at index ${i}`);
@@ -131,18 +114,8 @@ in New York City
 			const invalidVttFileData = `00:01.000 --> 00:03.000
 <v Roger Bingham>We are
 in New York City`;
-
-			const vttParserMock = {};
-			vttParserMock.parse = sinon.spy();
-			vttParserMock.flush = sinon.stub();
-			vttParserMock.flush.callsFake(() => {
-				if (vttParserMock.parse.calledWith(invalidVttFileData)) {
-					vttParserMock.onerror();
-				}
-			});
-
 			try {
-				parseWebVttFile(vttParserMock, invalidVttFileData);
+				parseWebVttFile(invalidVttFileData);
 				assert.fail('Did not throw an error');
 			} catch (error) {
 				assert.equal(error.message, 'vttParseError');

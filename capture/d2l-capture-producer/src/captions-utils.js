@@ -1,4 +1,5 @@
 import parseSRT from 'parse-srt/src/parse-srt.js';
+import { VttParser } from './vtt';
 
 /**
  * Takes JSON output from parse-srt and formats each cue object into
@@ -12,6 +13,15 @@ function _convertJsonSrtCuesToVttCues(jsonSrtCues) {
 		const convertedText = jsonSrtCue.text.replace('<br />', '\n');
 		return new VTTCue(jsonSrtCue.start, jsonSrtCue.end, convertedText);
 	});
+}
+
+/**
+ * Converts VTTCueShims from vtt.js into real VTTCue objects.
+ * @param {array} vttCueShims An array of VTTCueShims from vtt.js
+ * @returns An array of VTTCue objects
+ */
+function _convertVttCuesShimToVttCues(vttCueShims) {
+	return vttCueShims.map(vttCueShim => new VTTCue(vttCueShim.startTime, vttCueShim.endTime, vttCueShim.text));
 }
 
 /**
@@ -56,23 +66,26 @@ function parseSrtFile(rawSrtData) {
 
 /**
  * Parses WebVTT text data into VTTCue objects.
- * @param {object} vttParser An instance of Parser from vtt.js
  * @param {string} rawVttData The text data from an WebVTT file
  * @returns An array of VTTCue objects, sorted by ascending timestamp
  */
-function parseWebVttFile(vttParser, rawVttData) {
+function parseWebVttFile(rawVttData) {
 	const cues = [];
+	const vttParser = new VttParser();
 	vttParser.oncue = function(cue) {
 		cues.push(cue);
 	};
-	vttParser.onerror = function() {
+	vttParser.onparsingerror = function() {
 		throw new Error('vttParseError');
 	};
 	vttParser.parse(rawVttData);
 	vttParser.flush();
+	console.log('.');
+	console.log(cues);
+	console.log('.');
 
 	cues.sort((cue1, cue2) => cue1.startTime - cue2.startTime);
-	return cues;
+	return _convertVttCuesShimToVttCues(cues);
 }
 
 export {

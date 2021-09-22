@@ -261,7 +261,6 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 				<d2l-alert-toast
 					id="d2l-video-producer-captions-alert-toast"
 				></d2l-alert-toast>
-				${this._appendVttScript()}
 			</div>
 		`;
 	}
@@ -273,20 +272,6 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 				this._updateNumberOfVisibleCuesInList();
 			}
 		});
-	}
-
-	// <script> tags must be added via Javascript in LitElement.
-	// https://stackoverflow.com/a/55693185
-	_appendVttScript() {
-		// Using a relative path (e.g. './scripts/vtt.min.js') in the <script> tag
-		// won't work because the script is on a separate domain from the LMS page.
-		// So we need to construct the absolute URL to the vtt script.
-		const urlOfThisFile = new URL(import.meta.url);
-		const vttScriptUrlPrefix = urlOfThisFile.href.slice(0, urlOfThisFile.href.indexOf('src'));
-
-		const script = document.createElement('script');
-		script.src = `${vttScriptUrlPrefix}scripts/vtt.min.js`;
-		return script;
 	}
 
 	_dispatchCaptionsChanged(captions) {
@@ -326,9 +311,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			fileReader.addEventListener('load', event => {
 				try {
 					if (extension === 'vtt') {
-						const vttLibrary = window.WebVTT;
-						const vttParser = new vttLibrary.Parser(window, vttLibrary.StringDecoder());
-						const parsedCaptions = parseWebVttFile(vttParser, event.target.result);
+						const parsedCaptions = parseWebVttFile(event.target.result);
 						this._dispatchCaptionsChanged(parsedCaptions);
 					} else {
 						const parsedCaptions = parseSrtFile(event.target.result);
