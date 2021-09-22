@@ -278,13 +278,13 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 					<d2l-button
 						class="d2l-video-producer-controls-save-button"
 						@click="${this._handleSave}"
-						?disabled="${this._saving || this._finishing}"
+						?disabled="${this._saving || this._finishing || this._metadataLoading || this._captionsLoading}"
 						text="${this.localize('saveDraft')}"
 					>
 						${this.localize('saveDraft')}
 					</d2l-button>
 					<d2l-button
-						?disabled="${this._saving || this._finishing}"
+						?disabled="${this._saving || this._finishing || this._metadataLoading || this._captionsLoading}"
 						@click="${this._handleFinish}"
 						class="d2l-video-producer-controls-publish-button"
 						primary
