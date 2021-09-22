@@ -22,6 +22,24 @@ function _convertJsonSrtCuesToVttJsonCues(jsonSrtCues) {
 }
 
 /**
+ * Converts SRT text into WebVTT text.
+ * @param {string} srtText Valid SRT text data
+ * @returns A WebVTT string, containing the cues from the SRT text sorted by ascending timestamp
+ */
+function convertSrtTextToVttText(srtText) {
+	let jsonSrtCues;
+	try {
+		jsonSrtCues = parseSRT(srtText);
+	} catch (error) {
+		throw new Error('srtParseError');
+	}
+
+	jsonSrtCues.sort((cue1, cue2) => cue1.start - cue2.start);
+	const vttCues = _convertJsonSrtCuesToVttJsonCues(jsonSrtCues);
+	return compileWebVTT({ cues: vttCues, valid: true });
+}
+
+/**
  * Takes a number of seconds and formats into a timestamp string of the form hh:mm:ss.sss
  * @param {number} timestampInSeconds The timestamp value that will be formatted, in seconds
  * @returns A timestamp string formatted as hh:mm:ss.sss
@@ -42,24 +60,6 @@ function formatTimestampText(timestampInSeconds) {
 		millisecondsString = `0${milliseconds}`;
 	}
 	return `${hoursMinutesSecondsString}.${millisecondsString}`;
-}
-
-/**
- * Converts SRT text into WebVTT text.
- * @param {string} srtText Valid SRT text data
- * @returns A WebVTT string, containing the cues from the SRT text sorted by ascending timestamp
- */
-function convertSrtTextToVttText(srtText) {
-	let jsonSrtCues;
-	try {
-		jsonSrtCues = parseSRT(srtText);
-	} catch (error) {
-		throw new Error('srtParseError');
-	}
-
-	jsonSrtCues.sort((cue1, cue2) => cue1.start - cue2.start);
-	const vttCues = _convertJsonSrtCuesToVttJsonCues(jsonSrtCues);
-	return compileWebVTT({ cues: vttCues, valid: true });
 }
 
 export {
