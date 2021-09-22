@@ -1019,6 +1019,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 	async _loadCaptions(revision, locale) {
 		this._captionsLoading = true;
+		this._captionsUrl = '';
 		try {
 			const res = await this.apiClient.getCaptionsUrl({
 				contentId: this._content.id,
@@ -1029,7 +1030,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 			this._captionsUrl = res.captionsUrl;
 		} catch (error) {
 			if (error.message === 'Not Found') {
-				this._captionsUrl = '';
 				this._captions = [];
 				this._captionsLoading = false;
 			} else {
