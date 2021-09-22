@@ -14,6 +14,7 @@ class D2LCaptureCentralProducer extends DependencyRequester(PageViewElement) {
 		return [navigationSharedStyle, css`
 			.d2l-capture-central-producer {
 				width: 1170px;
+				overflow: hidden;
 			}
 
 			d2l-breadcrumbs {

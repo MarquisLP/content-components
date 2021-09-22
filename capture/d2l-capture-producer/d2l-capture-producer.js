@@ -8,7 +8,7 @@ import '@brightspace-ui/core/components/dropdown/dropdown-menu.js';
 import '@brightspace-ui/core/components/tabs/tabs.js';
 import '@brightspace-ui/core/components/tabs/tab-panel.js';
 import '@brightspace-ui-labs/media-player/media-player.js';
-import '@brightspace-ui-labs/video-producer/src/video-producer-language-selector.js';
+import './src/d2l-video-producer-language-selector.js';
 import './src/d2l-video-producer-captions.js';
 import './src/d2l-video-producer-chapters.js';
 
@@ -57,6 +57,17 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 	static get styles() {
 		return [selectStyles, css`
+			.d2l-video-producer-loading-container {
+				align-items: center;
+				display: flex;
+				height: 70%;
+				justify-content: center;
+				overflow-y: hidden;
+				position: absolute;
+				width: 100%;
+				z-index: 99;
+			}
+
 			.d2l-video-producer-top-bar-controls {
 				align-items: center;
 				display: flex;
@@ -64,7 +75,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 				margin-bottom: 15px;
 			}
 
-			d2l-labs-video-producer-language-selector {
+			d2l-video-producer-language-selector {
 				margin-right: auto;
 			}
 
@@ -83,12 +94,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 			.d2l-video-producer-controls-publish-button d2l-loading-spinner {
 				margin-right: 5px;
-			}
-
-			d2l-loading-spinner {
-				display: flex;
-				margin: auto;
-				margin-top: 200px;
 			}
 
 			.d2l-video-producer-main-content {
@@ -249,15 +254,17 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		};
 		return html`
 			<div class="d2l-video-producer">
-				${this._loading ? html`<d2l-loading-spinner size=150></d2l-loading-spinner>` : ''}
+				${this._loading ? html`<div class="d2l-video-producer-loading-container"><d2l-loading-spinner size=150></d2l-loading-spinner></div>` : ''}
 				<div class="d2l-video-producer-top-bar-controls" style="visibility: ${this._loading ? 'hidden' : 'visible'};">
-					<d2l-labs-video-producer-language-selector
+					<d2l-video-producer-language-selector
+						?disabled="${this._saving || this._finishing}"
 						.languages="${this._languages}"
 						.selectedLanguage="${this._selectedLanguage}"
 						@selected-language-changed="${this._handleSelectedLanguageChanged}"
-					></d2l-labs-video-producer-language-selector>
+					></d2l-video-producer-language-selector>
 					<d2l-dropdown-button-subtle
 						class="d2l-video-producer-controls-revision-dropdown"
+						?disabled="${this._saving || this._finishing}"
 						text="${this.localize('revisionNumber', { number: (this._revisionsLatestToOldest ? this._revisionsLatestToOldest.length - this._selectedRevisionIndex : 1) })}"
 					>
 						<d2l-dropdown-menu
@@ -271,13 +278,13 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 					<d2l-button
 						class="d2l-video-producer-controls-save-button"
 						@click="${this._handleSave}"
-						?disabled="${this._saving || this._finishing}"
+						?disabled="${this._saving || this._finishing || this._metadataLoading || this._captionsLoading}"
 						text="${this.localize('saveDraft')}"
 					>
 						${this.localize('saveDraft')}
 					</d2l-button>
 					<d2l-button
-						?disabled="${this._saving || this._finishing}"
+						?disabled="${this._saving || this._finishing || this._metadataLoading || this._captionsLoading}"
 						@click="${this._handleFinish}"
 						class="d2l-video-producer-controls-publish-button"
 						primary
