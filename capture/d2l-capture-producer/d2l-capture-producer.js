@@ -943,7 +943,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		this._captionsUrl = '';
 		setTimeout(() => {
 			this._captionsUrl = localVttUrl;
-		}, 500);
+		}, 0);
 	}
 
 	_handleChaptersChanged(e) {
