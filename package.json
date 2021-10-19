@@ -1,7 +1,7 @@
 {
   "name": "@brightspace/content-components",
   "description": "Web components for content in Brightspace",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "scripts": {
     "eslint-fix": "eslint . --ext .js,.html --fix",
     "lint": "npm run lint:eslint && npm run lint:lit",
@@ -60,6 +60,7 @@
     "mobx": "^5.15.6",
     "page": "^1.11.6",
     "parse-srt": "^1.0.0-alpha",
+    "siren-parser": "^8.5.0",
     "superagent": "^3",
     "superagent-d2l-session-auth": "^2.0.1"
   }
