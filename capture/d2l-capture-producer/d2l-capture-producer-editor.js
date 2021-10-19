@@ -29,6 +29,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 			captionsLoading: { type: Boolean, attribute: 'captions-loading' },
 			captionsUrl: { type: String },
 			defaultLanguage: { type: Object },
+			languages: { type: Object },
 			metadata: { type: Object },
 			metadataLoading: { type: Boolean, attribute: 'metadata-loading' },
 			selectedLanguage: { type: Object },
@@ -208,6 +209,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 								.captions="${this.captions}"
 								@captions-uploaded=${this._handleCaptionsUploaded}
 								.defaultLanguage="${this.defaultLanguage}"
+								.languages="${this.languages}"
 								?loading="${this.captionsLoading}"
 								.selectedLanguage="${this.selectedLanguage}"
 							></d2l-video-producer-captions>
