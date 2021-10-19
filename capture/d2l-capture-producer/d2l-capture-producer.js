@@ -535,6 +535,7 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 
 	async _loadContent() {
 		const content = await this.apiClient.getContent(this.contentId);
+		this._fireContentLoadedEvent(this._content);
 
 		const latestRevision = content.revisions[content.revisions.length - 1];
 		if (!latestRevision.draft) {
@@ -556,7 +557,6 @@ class CaptureProducer extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 		}
 
 		this._content = content;
-		this._fireContentLoadedEvent(this._content);
 		if (this._content.revisions) {
 			this._revisionsLatestToOldest = this._content.revisions.slice().reverse();
 		}
