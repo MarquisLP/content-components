@@ -102,20 +102,23 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 
 	render() {
 		return html`
-			<div class="d2l-video-producer-captions-cues-list-item">
+			<div
+				class="d2l-video-producer-captions-cues-list-item"
+				@click="${this._handleFocus}"
+			>
 				${this._renderMainControls()}
 				${this.expanded ? this._renderExpandedControls() : ''}
 			</div>
 		`;
 	}
 
-	_handleTextChanged(event) {
+	_handleFocus() {
+		this._jumpToCueStartTime();
+	}
+
+	_handleTextInput(event) {
 		this.cue.text = event.target.value;
-		this.dispatchEvent(new CustomEvent('media-player-time-jumped', {
-			detail: { time: this.cue.startTime },
-			bubbles: true,
-			composed: true,
-		}));
+		this._jumpToCueStartTime();
 		this.dispatchEvent(new CustomEvent('captions-edited', {
 			bubbles: true,
 			composed: true,
@@ -124,6 +127,15 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 
 	_hideExpandedControls() {
 		this.expanded = false;
+		this._handleFocus();
+	}
+
+	_jumpToCueStartTime() {
+		this.dispatchEvent(new CustomEvent('media-player-time-jumped', {
+			detail: { time: this.cue.startTime },
+			bubbles: true,
+			composed: true,
+		}));
 	}
 
 	_renderExpandedControls() {
@@ -140,6 +152,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 						</div>
 						<d2l-input-text
 							class="d2l-video-producer-captions-cue-start-timestamp"
+							@focus="${this._handleFocus}"
 							label=${this.localize('captionsCueStartTimestamp')}
 							description=${this.localize('captionsCueStartTimestampDescription')}
 							value=${formatTimestampText(this.cue.startTime)}
@@ -155,6 +168,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 						</div>
 						<d2l-input-text
 							class="d2l-video-producer-captions-cue-end-timestamp"
+							@focus="${this._handleFocus}"
 							label=${this.localize('captionsCueEndTimestamp')}
 							description=${this.localize('captionsCueEndTimestampDescription')}
 							value=${formatTimestampText(this.cue.endTime)}
@@ -169,8 +183,9 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 		return html`
 			<div class="d2l-video-producer-captions-cue-main-controls">
 				<textarea
-					@change="${this._handleTextChanged}"
 					class="d2l-input d2l-video-producer-captions-cue-text-input"
+					@focus="${this._handleFocus}"
+					@input="${this._handleTextInput}"
 					aria-label=${this.localize('captionsCueText')}
 					rows="2"
 				>${this.cue.text}</textarea>
@@ -199,6 +214,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 
 	_showExpandedControls() {
 		this.expanded = true;
+		this._handleFocus();
 	}
 }
 
