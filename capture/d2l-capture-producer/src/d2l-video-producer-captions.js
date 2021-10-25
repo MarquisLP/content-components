@@ -132,7 +132,11 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 
 	_jumpToCueStartTime() {
 		this.dispatchEvent(new CustomEvent('media-player-time-jumped', {
-			detail: { time: this.cue.startTime },
+			// In Chrome, if a cue's start time overlaps with a cue's end time exactly,
+			// (e.g. cueA.endTime = 3.000, cueB.startTime = 3.000)
+			// the displayed captions text will flicker back-and-forth between them.
+			// To prevent that flickering, we jump a tiny bit ahead of the cue's start time.
+			detail: { time: this.cue.startTime + 0.001 },
 			bubbles: true,
 			composed: true,
 		}));
