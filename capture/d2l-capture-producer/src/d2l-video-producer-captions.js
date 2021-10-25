@@ -111,6 +111,11 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 
 	_handleTextChanged(event) {
 		this.cue.text = event.target.value;
+		this.dispatchEvent(new CustomEvent('media-player-time-jumped', {
+			detail: { time: this.cue.startTime },
+			bubbles: true,
+			composed: true,
+		}));
 	}
 
 	_hideExpandedControls() {
