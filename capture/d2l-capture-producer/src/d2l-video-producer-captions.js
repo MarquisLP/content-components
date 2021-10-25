@@ -116,6 +116,10 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 			bubbles: true,
 			composed: true,
 		}));
+		this.dispatchEvent(new CustomEvent('captions-edited', {
+			bubbles: true,
+			composed: true,
+		}));
 	}
 
 	_hideExpandedControls() {
