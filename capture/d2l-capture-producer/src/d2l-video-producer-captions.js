@@ -15,10 +15,8 @@ import './d2l-video-producer-auto-generate-captions-dialog';
 class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 	static get properties() {
 		return {
-			endTime: { type: String, attribute: 'end-time' },
+			cue: { type: Object },
 			expanded: { type: Boolean },
-			startTime: { type: String, attribute: 'start-time' },
-			text: { type: String, attribute: 'text' }
 		};
 	}
 
@@ -99,7 +97,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 
 	constructor() {
 		super();
-		this.captionsCue = null;
+		this.cue = { start: 0, end: 0, text: '' };
 	}
 
 	render() {
@@ -109,6 +107,10 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 				${this.expanded ? this._renderExpandedControls() : ''}
 			</div>
 		`;
+	}
+
+	_handleTextChanged(event) {
+		this.cue.text = event.target.value;
 	}
 
 	_hideExpandedControls() {
@@ -131,7 +133,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 							class="d2l-video-producer-captions-cue-start-timestamp"
 							label=${this.localize('captionsCueStartTimestamp')}
 							description=${this.localize('captionsCueStartTimestampDescription')}
-							value=${formatTimestampText(this.startTime)}
+							value=${formatTimestampText(this.cue.startTime)}
 						></d2l-input-text>
 					</div>
 					<div class="d2l-video-producer-captions-cue-timestamp-container">
@@ -146,7 +148,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 							class="d2l-video-producer-captions-cue-end-timestamp"
 							label=${this.localize('captionsCueEndTimestamp')}
 							description=${this.localize('captionsCueEndTimestampDescription')}
-							value=${formatTimestampText(this.endTime)}
+							value=${formatTimestampText(this.cue.endTime)}
 						></d2l-input-text>
 					</div>
 				</div>
@@ -158,10 +160,11 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 		return html`
 			<div class="d2l-video-producer-captions-cue-main-controls">
 				<textarea
+					@change="${this._handleTextChanged}"
 					class="d2l-input d2l-video-producer-captions-cue-text-input"
 					aria-label=${this.localize('captionsCueText')}
 					rows="2"
-				>${this.text}</textarea>
+				>${this.cue.text}</textarea>
 				<div class="d2l-video-producer-captions-cue-main-controls-buttons">
 					<d2l-button-icon
 						text=${this.localize('deleteCaptionsCue')}
@@ -431,9 +434,7 @@ class VideoProducerCaptions extends InternalLocalizeMixin(LitElement) {
 			<div class="d2l-video-producer-captions-cues-list">
 				${[...Array(Math.min(this._numberOfVisibleCuesInList, this.captions.length)).keys()].map(index => html`
 					<d2l-video-producer-captions-cues-list-item
-						start-time="${this.captions[index].startTime}"
-						end-time="${this.captions[index].endTime}"
-						text="${this.captions[index].text}"
+						.cue="${this.captions[index]}"
 					></d2l-video-producer-captions-cues-list-item>
 				`)}
 				<div class="d2l-video-producer-captions-cues-list-bottom"></div>
