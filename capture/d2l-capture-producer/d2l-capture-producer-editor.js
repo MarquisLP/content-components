@@ -21,7 +21,7 @@ import { RtlMixin } from '@brightspace-ui/core/mixins/rtl-mixin.js';
 import { selectStyles } from '@brightspace-ui/core/components/inputs/input-select-styles.js';
 import { styleMap } from 'lit-html/directives/style-map';
 import { Timeline } from './src/timeline';
-import { textTrackCueListToArray } from './src/captions-utils.js';
+import { convertVttCueArrayToVttText, textTrackCueListToArray } from './src/captions-utils.js';
 
 class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) {
 	static get properties() {
@@ -820,8 +820,19 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 			this._mediaPlayer.currentTime + constants.NEW_CUE_DEFAULT_DURATION_IN_SECONDS,
 			event.detail.text
 		);
-		this._mediaPlayer.textTracks[0].addCue(newCue);
-		this._syncCaptionsWithMediaPlayer();
+		if (this._mediaPlayer.textTracks?.length > 0) {
+			this._mediaPlayer.textTracks[0].addCue(newCue);
+			this._syncCaptionsWithMediaPlayer();
+		} else {
+			// If there were no captions before, the Media Player won't have any text tracks yet.
+			// In this case, we need to make the Media Player load a new text track with the new cue in it.
+			const vttString = convertVttCueArrayToVttText([newCue]);
+			const localVttUrl = window.URL.createObjectURL(new Blob([vttString], { type: 'text/vtt' }));
+			this.dispatchEvent(new CustomEvent('captions-url-changed', {
+				detail: { captionsUrl: localVttUrl },
+				composed: false
+			}));
+		}
 
 		setTimeout(() => {
 			this._mediaPlayer.currentTime = newCue.startTime + 0.001;
