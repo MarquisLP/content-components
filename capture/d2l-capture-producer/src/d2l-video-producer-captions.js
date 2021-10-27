@@ -133,6 +133,14 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 		return this.cue?.startTime;
 	}
 
+	_handleDeleteClicked() {
+		this.dispatchEvent(new CustomEvent('captions-cue-deleted', {
+			detail: { cue: this.cue },
+			bubbles: true,
+			composed: true,
+		}));
+	}
+
 	_handleFocus() {
 		this._jumpToCueStartTime();
 	}
@@ -233,6 +241,7 @@ class CaptionsCueListItem extends InternalLocalizeMixin(LitElement) {
 				>${this.cue.text}</textarea>
 				<div class="d2l-video-producer-captions-cue-main-controls-buttons">
 					<d2l-button-icon
+						@click="${this._handleDeleteClicked}"
 						text=${this.localize('deleteCaptionsCue')}
 						icon="tier1:delete"
 					></d2l-button-icon>

@@ -220,6 +220,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 							<d2l-video-producer-captions
 								.activeCue="${this._activeCue}"
 								.captions="${this.captions}"
+								@captions-cue-deleted="${this._handleCaptionsCueDeleted}"
 								@captions-cue-end-timestamp-synced="${this._handleCaptionsCueEndTimestampSynced}"
 								@captions-cue-start-timestamp-synced="${this._handleCaptionsCueStartTimestampSynced}"
 								@captions-vtt-replaced=${this._handleCaptionsVttReplaced}
@@ -812,6 +813,12 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 	}
 
 	//#endregion
+	_handleCaptionsCueDeleted(event) {
+		const cueToDelete = event.detail.cue;
+		this._mediaPlayer.textTracks[0].removeCue(cueToDelete);
+		this._syncCaptionsWithMediaPlayer();
+	}
+
 	_handleCaptionsCueEndTimestampSynced(event) {
 		const originalCue = event.detail.cue;
 		const cueDuration = originalCue.endTime - originalCue.startTime;
@@ -823,7 +830,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 
 		this._mediaPlayer.textTracks[0].addCue(editedCue); // TextTrack.addCue() automatically inserts the cue at the appropriate index based on startTime.
 		this._mediaPlayer.textTracks[0].removeCue(originalCue);
-		this._fireCaptionsChangedEvent(textTrackCueListToArray(this._mediaPlayer.textTracks[0].cues));
+		this._syncCaptionsWithMediaPlayer();
 
 		setTimeout(() => {
 			this._mediaPlayer.currentTime = editedCue.startTime + 0.001;
@@ -841,7 +848,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 
 		this._mediaPlayer.textTracks[0].addCue(editedCue); // TextTrack.addCue() automatically inserts the cue at the appropriate index based on startTime.
 		this._mediaPlayer.textTracks[0].removeCue(originalCue);
-		this._fireCaptionsChangedEvent(textTrackCueListToArray(this._mediaPlayer.textTracks[0].cues));
+		this._syncCaptionsWithMediaPlayer();
 
 		setTimeout(() => {
 			this._mediaPlayer.currentTime = editedCue.startTime + 0.001;
@@ -1090,6 +1097,10 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 
 			this._updateVideoTime();
 		}, 50);
+	}
+
+	_syncCaptionsWithMediaPlayer() {
+		this._fireCaptionsChangedEvent(textTrackCueListToArray(this._mediaPlayer.textTracks[0].cues));
 	}
 
 	_updateCutOnStage(cut) {
