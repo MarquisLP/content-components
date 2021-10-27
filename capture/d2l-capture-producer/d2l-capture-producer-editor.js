@@ -220,6 +220,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 							<d2l-video-producer-captions
 								.activeCue="${this._activeCue}"
 								.captions="${this.captions}"
+								@captions-cue-added="${this._handleCaptionsCueAdded}"
 								@captions-cue-deleted="${this._handleCaptionsCueDeleted}"
 								@captions-cue-end-timestamp-synced="${this._handleCaptionsCueEndTimestampSynced}"
 								@captions-cue-start-timestamp-synced="${this._handleCaptionsCueStartTimestampSynced}"
@@ -813,6 +814,20 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 	}
 
 	//#endregion
+	_handleCaptionsCueAdded(event) {
+		const newCue = new VTTCue(
+			this._mediaPlayer.currentTime,
+			this._mediaPlayer.currentTime + constants.NEW_CUE_DEFAULT_DURATION_IN_SECONDS,
+			event.detail.text
+		);
+		this._mediaPlayer.textTracks[0].addCue(newCue);
+		this._syncCaptionsWithMediaPlayer();
+
+		setTimeout(() => {
+			this._mediaPlayer.currentTime = newCue.startTime + 0.001;
+		}, 100); // Give the new cue element time to be drawn.
+	}
+
 	_handleCaptionsCueDeleted(event) {
 		const cueToDelete = event.detail.cue;
 		this._mediaPlayer.textTracks[0].removeCue(cueToDelete);
