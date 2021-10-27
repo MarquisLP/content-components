@@ -832,6 +832,7 @@ class CaptureProducerEditor extends RtlMixin(InternalLocalizeMixin(LitElement)) 
 		const cueToDelete = event.detail.cue;
 		this._mediaPlayer.textTracks[0].removeCue(cueToDelete);
 		this._syncCaptionsWithMediaPlayer();
+		this._mediaPlayer.currentTime = this._mediaPlayer.currentTime + 0.001; // Make the Media Player update to stop showing the deleted cue.
 	}
 
 	_handleCaptionsCueEndTimestampSynced(event) {
