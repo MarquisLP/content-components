@@ -1,5 +1,6 @@
 export const pageNames = {
 	auditLogs: 'audit-logs',
+	apps: 'apps',
 	clips: 'clips',
 	folders: 'folders',
 	landing: '',

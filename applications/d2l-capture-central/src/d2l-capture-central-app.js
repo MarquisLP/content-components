@@ -206,6 +206,9 @@ class D2lCaptureCentralApp extends DependencyRequester(NavigationMixin(InternalL
 				import('./pages/live-events/d2l-capture-central-live-events-view.js');
 				return;
 			*/
+			case pageNames.apps:
+				import('./pages/apps/d2l-capture-central-apps.js');
+				return;
 			case pageNames.recycleBin:
 				import('./pages/recycle-bin/d2l-capture-central-recycle-bin.js');
 				return;
@@ -256,6 +259,7 @@ class D2lCaptureCentralApp extends DependencyRequester(NavigationMixin(InternalL
 				<d2l-capture-central-clips class="page" ?active=${currentPage === pageNames.clips}></d2l-capture-central-clips>
 				<d2l-capture-central-folders class="page" ?active=${currentPage === pageNames.folders}></d2l-capture-central-folders>
 				<d2l-capture-central-videos class="page" ?active=${currentPage === pageNames.videos}></d2l-capture-central-videos>
+				<d2l-capture-central-apps class="page" ?active=${currentPage === pageNames.apps}></d2l-capture-central-apps>
 				<d2l-capture-central-recycle-bin class="page" ?active=${currentPage === pageNames.recycleBin}></d2l-capture-central-recycle-bin>
 				<d2l-capture-central-producer class="page" ?active=${currentPage === pageNames.producer && !!subView}></d2l-capture-central-producer>
 				<d2l-capture-central-settings class="page" ?active=${currentPage === pageNames.settings}></d2l-capture-central-settings>
@@ -279,6 +283,11 @@ class D2lCaptureCentralApp extends DependencyRequester(NavigationMixin(InternalL
 			icon: 'tier2:file-video',
 		},
 		*/
+		{
+			langterm: 'apps',
+			location: `/${pageNames.apps}`,
+			icon: 'tier2:tools',
+		},
 		{
 			langterm: 'recycleBin',
 			location: `/${pageNames.recycleBin}`,
@@ -333,6 +342,7 @@ class D2lCaptureCentralApp extends DependencyRequester(NavigationMixin(InternalL
 			`/:orgUnitId/${pageNames.liveEventsReporting}`,
 			*/
 			`/:orgUnitId/${pageNames.videos}`,
+			`/:orgUnitId/${pageNames.apps}`,
 			`/:orgUnitId/${pageNames.recycleBin}`,
 			`/:orgUnitId/${pageNames.producer}/:id`,
 			`/:orgUnitId/${pageNames.settings}`,
