@@ -74,6 +74,8 @@ class D2LCaptureCentralApps extends InternalLocalizeMixin(DependencyRequester(Pa
 				return this.localize('mac');
 			case 'win':
 				return this.localize('windows');
+			default:
+				throw new Error('Invalid platform name');
 		}
 	}
 }
