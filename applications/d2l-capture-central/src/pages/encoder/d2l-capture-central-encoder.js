@@ -84,12 +84,6 @@ class D2LCaptureCentralEncoder extends InternalLocalizeMixin(DependencyRequester
 						</d2l-button>
 						${this._encoderDownloads.map(encoderDownload => this._renderEncoderDownloadButton(encoderDownload))}
 					</div>
-					<d2l-alert-toast
-						id="launch-error-alert"
-						type="critical"
-					>
-						${this.localize('encoderNotInstalled')}
-					</d2l-alert-toast>
 				</div>
 			`;
 		}
